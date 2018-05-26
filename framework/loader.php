@@ -30,19 +30,24 @@ $startTime = getTime();
 
 /* Run the app. */
 $app = router::createApp($appName);
+
 $common = $app->loadCommon();
 
-/* Check the reqeust is getconfig or not. */
-if(isset($_GET['mode']) && $_GET['mode'] == 'getconfig') die(helper::removeUTF8Bom($app->exportConfig()));
-
-/* Check for need upgrade. */
-if(RUN_MODE != 'upgrade')
-{
-    $config->installedVersion = $common->loadModel('setting')->getVersion();
-    if(version_compare($config->version, $config->installedVersion, '>')) die(header('location: upgrade.php'));
+if ($config->debug == true) {
+    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/router.php", "37");
 }
 
-if($app->clientDevice == 'mobile' and strpos($config->installedVersion, 'pro') === 0 and $config->default->view == 'html') $config->default->view = 'mhtml';
+
+/* Check the reqeust is getconfig or not. */
+if (isset($_GET['mode']) && $_GET['mode'] == 'getconfig') die(helper::removeUTF8Bom($app->exportConfig()));
+
+/* Check for need upgrade. */
+if (RUN_MODE != 'upgrade') {
+    $config->installedVersion = $common->loadModel('setting')->getVersion();
+    if (version_compare($config->version, $config->installedVersion, '>')) die(header('location: upgrade.php'));
+}
+
+if ($app->clientDevice == 'mobile' and strpos($config->installedVersion, 'pro') === 0 and $config->default->view == 'html') $config->default->view = 'mhtml';
 
 $app->parseRequest();
 $common->checkPriv();

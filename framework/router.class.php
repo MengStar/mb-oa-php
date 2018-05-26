@@ -67,6 +67,26 @@ class router extends baseRouter
     }
 
     /**
+     * Save a log.
+     *
+     * @param  string $log
+     * @param  string $file
+     * @param  string $line
+     * @access public
+     * @return void
+     */
+    public function log($message, $file = '', $line = '')
+    {
+        $log = "\n" . date('H:i:s') . " $message";
+        if ($file) $log .= " in <strong>$file</strong>";
+        if ($line) $log .= " on line <strong>$line</strong> ";
+        $file = $this->getLogRoot() . 'common.log.php';
+        if (!is_file($file)) file_put_contents($file, "<?php\n die();\n?>\n");
+
+        $fh = @fopen($file, 'a');
+        if ($fh) fwrite($fh, $log) && fclose($fh);
+    }
+    /**
      * Set the static root.
      * 
      * @access protected
