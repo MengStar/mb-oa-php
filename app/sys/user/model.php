@@ -355,6 +355,9 @@ class userModel extends model
      */
     public function login($account, $password)
     {
+        if ($this->config->debug == true) {
+            $this->app->log($account . "@" . $password . "开始登陆", "user-login", "359");
+        }
         $user = $this->identify($account, $password);
         if(!$user) return false;
 
@@ -370,6 +373,7 @@ class userModel extends model
         $this->app->user = $this->session->user;
 
         $this->loadModel('action')->create('user', $user->id, 'login');
+
 
         return $user;
     }

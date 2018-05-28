@@ -78,8 +78,8 @@ class router extends baseRouter
     public function log($message, $file = '', $line = '')
     {
         $log = "\n" . date('H:i:s') . " $message";
-        if ($file) $log .= " in <strong>$file</strong>";
-        if ($line) $log .= " on line <strong>$line</strong> ";
+        if ($file) $log .= " in $file";
+        if ($line) $log .= " on line $line ";
         $file = $this->getLogRoot() . 'common.log.php';
         if (!is_file($file)) file_put_contents($file, "<?php\n die();\n?>\n");
 

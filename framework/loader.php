@@ -34,7 +34,7 @@ $app = router::createApp($appName);
 $common = $app->loadCommon();
 
 if ($config->debug == true) {
-    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/router.php", "37");
+    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/loader.php", "37");
 }
 
 
