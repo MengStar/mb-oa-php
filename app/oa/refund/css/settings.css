@@ -1,3 +1,0 @@
-.table-form td + td{padding: 5px;}
-.table-form td + td > a{display: inline-block; cursor: pointer;}
-.table-form td + td > a:hover {text-decoration: none;}
