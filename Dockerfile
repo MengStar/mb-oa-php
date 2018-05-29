@@ -1,4 +1,4 @@
-FROM registry.cn-hangzhou.aliyuncs.com/mengstar/mb-oa
+FROM garland/xampp-base
 EXPOSE 80
 ADD httpd-xampp.conf /opt/lampp/etc/extra/httpd-xampp.conf
 ADD ./root/ /opt/lampp/htdocs/
