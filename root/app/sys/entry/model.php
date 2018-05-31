@@ -23,12 +23,17 @@ class entryModel extends model
     {
         $entries = $this->dao->select('*')->from(TABLE_ENTRY)
             ->where(1)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF(!empty($category))->andWhere('category')->eq($category)->fi()
             ->orderBy('`order`, id')
             ->fetchAll();
+
+
+
         $categories = $this->dao->select('distinct t1.id, t1.name, t1.order')->from(TABLE_CATEGORY)->alias('t1')
             ->leftJoin(TABLE_ENTRY)->alias('t2')->on('t1.id=t2.category')
             ->where('t1.type')->eq('entry')
+            ->andWhere('t1.account_id')->eq($this->app->user->accountId)
             ->andWhere('t2.visible')->eq(1)
             ->andWhere('t2.category')->ne(0)
             ->orderBy('t1.order')
@@ -146,7 +151,7 @@ class entryModel extends model
      */
     public function getById($entryID)
     {
-        return $this->dao->select('*')->from(TABLE_ENTRY)->where('id')->eq($entryID)->fetch();
+        return $this->dao->select('*')->from(TABLE_ENTRY)->where('id')->eq($entryID)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
     }
 
     /**
@@ -158,7 +163,7 @@ class entryModel extends model
      */
     public function getByCode($code)
     {
-        return $this->dao->select('*')->from(TABLE_ENTRY)->where('code')->eq($code)->fetch(); 
+        return $this->dao->select('*')->from(TABLE_ENTRY)->where('code')->eq($code)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
     }
 
     /**
@@ -169,7 +174,7 @@ class entryModel extends model
      */
     public function create()
     {
-        $maxOrder = $this->dao->select('`order`')->from(TABLE_ENTRY)->orderBy('order_desc')->limit(1)->fetch('order');
+        $maxOrder = $this->dao->select('`order`')->from(TABLE_ENTRY)->where('account_id')->eq($this->app->user->accountId)->orderBy('order_desc')->limit(1)->fetch('order');
 
         $entry = fixer::input('post')
             ->setDefault('ip', '*')
@@ -184,6 +189,7 @@ class entryModel extends model
             ->setDefault('height', '538')
             ->setDefault('position', 'default')
             ->setDefault('zentao', 0)
+            ->setDefault('account_id', $this->app->user->accountId)
             ->setIF($this->post->allip, 'ip', '*')
             ->setIF($this->post->zentao, 'open', 'iframe')
             ->setIF($this->post->zentao, 'integration', 1)
@@ -221,6 +227,7 @@ class entryModel extends model
             $priv = new stdclass();
             $priv->module = 'apppriv';
             $priv->method = $this->post->code;
+            $priv->account_id=$this->app->user->accountId;
             foreach($this->post->groups as $group)
             {
                 $priv->group = $group;
@@ -247,6 +254,7 @@ class entryModel extends model
             ->autoCheck()
             ->batchCheck($this->config->entry->require->edit, 'notempty')
             ->where('code')->eq($code)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->exec();
         return !dao::isError();
     }
@@ -271,6 +279,7 @@ class entryModel extends model
         $this->dao->update(TABLE_ENTRY)->data($entry, $skip = 'width,height,files')
             ->autoCheck()
             ->where('code')->eq($code)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->exec();
 
         return $oldEntry->id;
@@ -293,7 +302,7 @@ class entryModel extends model
             ->remove('allip')
             ->get();
 
-        $this->dao->update(TABLE_ENTRY)->data($entry)->autoCheck()->where('code')->eq($code)->exec();
+        $this->dao->update(TABLE_ENTRY)->data($entry)->autoCheck()->where('code')->eq($code)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         return !dao::isError();
     }
 
@@ -309,7 +318,7 @@ class entryModel extends model
         $entry = $this->getByCode($code);
 
         $this->deleteLogo($entry->id);
-        $this->dao->delete()->from(TABLE_ENTRY)->where('code')->eq($code)->exec();
+        $this->dao->delete()->from(TABLE_ENTRY)->where('code')->eq($code)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
 
         return !dao::isError();
     }
@@ -357,6 +366,7 @@ class entryModel extends model
     {
         return $this->dao->select('*')->from(TABLE_USER)
             ->where('deleted')->eq(0)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->fetchAll();
     }
 
@@ -382,7 +392,7 @@ class entryModel extends model
             $file = $this->file->getByID(key($fileTitle));
 
             $logoPath = $this->file->webPath . $this->file->getRealPathName($file->pathname);
-            $this->dao->update(TABLE_ENTRY)->set('logo')->eq($logoPath)->where('id')->eq($entryID)->exec();
+            $this->dao->update(TABLE_ENTRY)->set('logo')->eq($logoPath)->where('id')->eq($entryID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         }
     }
 

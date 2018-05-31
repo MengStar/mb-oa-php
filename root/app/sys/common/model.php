@@ -777,7 +777,7 @@ class commonModel extends model
      */
     public function setEntry()
     {
-        $entry = $this->dao->select('*')->from(TABLE_ENTRY)->where('code')->eq($this->appName)->fetch();
+        $entry = $this->dao->select('*')->from(TABLE_ENTRY)->where('code')->eq($this->appName)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
         $this->session->set('entry', $entry);
         $this->app->entry = $this->session->entry;
     }
