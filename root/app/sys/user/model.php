@@ -361,6 +361,13 @@ class userModel extends model
         $user = $this->identify($account, $password);
         if(!$user) return false;
 
+        /* add accountID */
+        $accountId = $this->dao->select('account_id')->from(TABLE_ACCOUNT)->where('account')->eq($account)->fetch()->account_id;
+        if ($this->config->debug == true) {
+            $this->app->log("accountId:" . $accountId, "model:user-login", "367");
+        }
+        $user->accountId = $accountId;
+
         /* Set keep login cookie info if keep login. */
         if($this->post->keepLogin == 'true') $this->keepLogin($user);
 
