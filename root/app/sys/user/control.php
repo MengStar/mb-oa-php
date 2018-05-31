@@ -36,6 +36,11 @@ class user extends control
         $loginLink = $this->createLink('user', 'login');
         $denyLink  = $this->createLink('user', 'deny');
 
+        if ($this->config->debug == true) {
+            $this->app->log("loginLink:".$loginLink, "control:user", "40");
+            $this->app->log("denyLink:".$denyLink, "control:user", "41");
+            $this->app->log("accountId:".$this->app->accountId, "control:user", "42");
+        }
         /* Reload lang by lang of get when viewType is json. */
         if($this->app->getViewType() == 'json' and $this->get->lang and $this->get->lang != $this->app->getClientLang())
         {

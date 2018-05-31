@@ -92,7 +92,7 @@ class baseHelper
         {
             $link .= "?{$config->moduleVar}=$moduleName&{$config->methodVar}=$methodName";
             if($viewType != 'html') $link .= "&{$config->viewVar}=" . $viewType;
-            foreach($vars as $key => $value) $link .= "&$key=$value";
+            foreach($vars as $key => $value) $link .= "&$key=$value".'&accountId='.$app->accountId;
             return self::processOnlyBodyParam($link, $onlyBody);
         }
 
@@ -106,7 +106,7 @@ class baseHelper
         {
             $link .= "$moduleName{$config->requestFix}$methodName";
             foreach($vars as $value) $link .= "{$config->requestFix}$value";
-            $link .= '.' . $viewType;
+            $link .= '.' . $viewType.'?accountId='.$app->accountId;
 
             return self::processOnlyBodyParam($link, $onlyBody);
         }

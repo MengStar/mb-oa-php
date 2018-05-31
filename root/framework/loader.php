@@ -28,18 +28,20 @@ include "$frameworkRoot/helper.class.php";
 /* Log the time and define the run mode. */
 $startTime = getTime();
 
+$accountId = $_GET['accountId'];
 /* Run the app. */
-$app = router::createApp($appName);
+$app = router::createApp($appName,'','',$accountId);
 
 $common = $app->loadCommon();
 
 if ($config->debug == true) {
-    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/loader.php", "37");
+//    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/loader.php", "37");
+    $app->log("accountId:" . $app->accountId, "loader.php", "41");
 }
-
 
 /* Check the reqeust is getconfig or not. */
 if (isset($_GET['mode']) && $_GET['mode'] == 'getconfig') die(helper::removeUTF8Bom($app->exportConfig()));
+
 
 /* Check for need upgrade. */
 if (RUN_MODE != 'upgrade') {
