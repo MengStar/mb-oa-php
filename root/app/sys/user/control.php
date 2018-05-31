@@ -37,9 +37,8 @@ class user extends control
         $denyLink  = $this->createLink('user', 'deny');
 
         if ($this->config->debug == true) {
-            $this->app->log("loginLink:".$loginLink, "control:user", "40");
-            $this->app->log("denyLink:".$denyLink, "control:user", "41");
-            $this->app->log("accountId:".$this->app->accountId, "control:user", "42");
+            $this->app->log("loginLink:".$loginLink, "control:user-login", "40");
+            $this->app->log("denyLink:".$denyLink, "control:user-login", "41");
         }
         /* Reload lang by lang of get when viewType is json. */
         if($this->app->getViewType() == 'json' and $this->get->lang and $this->get->lang != $this->app->getClientLang())
@@ -58,7 +57,11 @@ class user extends control
             }
 
             if($this->referer and strpos($loginLink . $denyLink, $this->referer) !== false) $this->locate($this->referer);
-            $this->locate($this->createLink($this->config->default->module));
+            $link = $this->createLink($this->config->default->module);
+            if ($this->config->debug == true) {
+                $this->app->log("go to:".$link, "control:user-login", "62");
+            }
+            $this->locate($link);
             exit;
         }
 

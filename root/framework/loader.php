@@ -36,7 +36,7 @@ $common = $app->loadCommon();
 
 if ($config->debug == true) {
 //    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/loader.php", "37");
-    $app->log("accountId:" . $app->accountId, "loader.php", "41");
+    $app->log("accountId:" . $app->accountId, "loader.php", "39");
 }
 
 /* Check the reqeust is getconfig or not. */

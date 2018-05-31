@@ -118,7 +118,7 @@ class baseHelper
          */
         if($moduleName == $config->default->module)
         {
-            $link .= $config->default->method . '.' . $viewType; 
+            $link .= $config->default->method . '.' . $viewType.'?accountId='.$app->accountId;
             return self::processOnlyBodyParam($link, $onlyBody);
         }
 
@@ -129,7 +129,7 @@ class baseHelper
          */
         if($viewType == $app->getViewType())
         {
-            $link .= $moduleName . '/';
+            $link .= $moduleName . '/'.'?accountId='.$app->accountId;
             return self::processOnlyBodyParam($link, $onlyBody);
         }
 
@@ -138,7 +138,7 @@ class baseHelper
          * Input: moduleName=article&methodName=index&viewType=json. Output: /article.json
          *
          */
-        $link .= $moduleName . '.' . $viewType;
+        $link .= $moduleName . '.' . $viewType.'?accountId='.$app->accountId;
         return self::processOnlyBodyParam($link, $onlyBody);
     }
 

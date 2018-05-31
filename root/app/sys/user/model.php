@@ -356,7 +356,7 @@ class userModel extends model
     public function login($account, $password)
     {
         if ($this->config->debug == true) {
-            $this->app->log($account . "@" . $password . "开始登陆", "user-login", "359");
+            $this->app->log($account . "@" . $password . "开始登陆", "model:user-login", "359");
         }
         $user = $this->identify($account, $password);
         if(!$user) return false;
