@@ -45,6 +45,7 @@ class actionModel extends model
         $action->comment    = trim(strip_tags($comment, "<img>")) ? trim(strip_tags($comment, $this->config->allowedTags)) : '';
         $action->extra      = $extra;
         $action->nextDate   = $this->post->nextDate;
+        $action->account_id = $this->app->user->accountId;
 
         /* Process action. */
         $action = $this->loadModel('file')->processImgURL($action, 'comment', $this->post->uid);
@@ -124,6 +125,7 @@ class actionModel extends model
             ->andWhere('date')->le(date('Y-m-d'))
             ->andWhere('account')->eq($this->app->user->account)
             ->andWhere('contact')->eq($this->post->contact)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->exec();
 
         if(!$this->post->nextDate) return false;
@@ -138,7 +140,7 @@ class actionModel extends model
         $dating->desc        = $this->post->desc;
         $dating->createdBy   = $this->app->user->account;
         $dating->createdDate = helper::now();
-
+        $dating->account_id =  $this->app->user->accountId;
         $this->dao->insert(TABLE_DATING)->data($dating)->autoCheck()->exec();
 
         if(dao::isError()) return false;
@@ -148,14 +150,14 @@ class actionModel extends model
             if(isset($this->config->action->datingTables[$objectType]))
             {
                 $table  = $this->config->action->datingTables[$objectType];
-                $object = $this->dao->select('*')->from($table)->where('id')->eq($objectID)->fetch();
+                $object = $this->dao->select('*')->from($table)->where('id')->eq($objectID) ->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
                 if($object)
                 {
                     $objectName = $this->post->nextDate;
                     if($this->post->nextContact && $objectType != 'contact' && $objectType != 'leads')
                     {
                         $nextContact = $this->post->nextContact == 'ditto' ? $this->post->contact : $this->post->nextContact;
-                        $objectName .= ' ' . $this->dao->select('realname')->from(TABLE_CONTACT)->where('id')->eq($nextContact)->fetch('realname');
+                        $objectName .= ' ' . $this->dao->select('realname')->from(TABLE_CONTACT)->where('id')->eq($nextContact) ->andWhere('account_id')->eq($this->app->user->accountId)->fetch('realname');
                     }
                     $actionID = $this->create($objectType, $objectID, $action = 'dating', $this->post->desc, $objectName, $actor = null, $customer, $contact);
                     return !dao::isError();
@@ -178,7 +180,7 @@ class actionModel extends model
     {
         $table    = $this->config->action->datingTables[$objectType];
         $nextDate = $this->getMinDatingDate($objectType, $objectID);
-        $this->dao->update($table)->set('nextDate')->eq($nextDate)->where('id')->eq($objectID)->exec();
+        $this->dao->update($table)->set('nextDate')->eq($nextDate)->where('id')->eq($objectID) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();
 
         return !dao::isError();
     }
@@ -199,17 +201,17 @@ class actionModel extends model
         $contactInfo['contactedBy']   = $this->app->user->account;
         $contactInfo['editedDate']    = helper::now();
 
-        $this->dao->update(TABLE_CUSTOMER)->data($contactInfo)->where('id')->eq($customer)->andWhere('contactedDate')->lt($this->post->date)->exec();
-        $this->dao->update(TABLE_CONTACT)->data($contactInfo)->where('id')->eq($contact)->andWhere('contactedDate')->lt($this->post->date)->exec();
+        $this->dao->update(TABLE_CUSTOMER)->data($contactInfo)->where('id')->eq($customer) ->andWhere('account_id')->eq($this->app->user->accountId)->andWhere('contactedDate')->lt($this->post->date)->exec();
+        $this->dao->update(TABLE_CONTACT)->data($contactInfo)->where('id')->eq($contact) ->andWhere('account_id')->eq($this->app->user->accountId)->andWhere('contactedDate')->lt($this->post->date)->exec();
 
         if($objectType == 'order')    $this->dao->update(TABLE_ORDER)->data($contactInfo)->where('id')->eq($objectID)->andWhere('contactedDate')->lt($this->post->date)->exec();
         if($objectType == 'contract') $this->dao->update(TABLE_CONTRACT)->data($contactInfo)->where('id')->eq($objectID)->andWhere('contactedDate')->lt($this->post->date)->exec();
 
         $nextDate = $this->post->nextDate ? $this->post->nextDate : ''; 
-        $this->dao->update(TABLE_CUSTOMER)->set('nextDate')->eq($nextDate)->where('id')->eq($customer)->exec();
-        $this->dao->update(TABLE_CONTACT)->set('nextDate')->eq($nextDate)->where('id')->eq($contact)->exec();
-        if($objectType == 'order') $this->dao->update(TABLE_ORDER)->set('nextDate')->eq($nextDate)->where('id')->eq($objectID)->exec();
-        if($objectType == 'contract') $this->dao->update(TABLE_CONTRACT)->set('nextDate')->eq($nextDate)->where('id')->eq($objectID)->exec();
+        $this->dao->update(TABLE_CUSTOMER)->set('nextDate')->eq($nextDate)->where('id')->eq($customer) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+        $this->dao->update(TABLE_CONTACT)->set('nextDate')->eq($nextDate)->where('id')->eq($contact) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+        if($objectType == 'order') $this->dao->update(TABLE_ORDER)->set('nextDate')->eq($nextDate)->where('id')->eq($objectID) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+        if($objectType == 'contract') $this->dao->update(TABLE_CONTRACT)->set('nextDate')->eq($nextDate)->where('id')->eq($objectID) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();
 
         return !dao::isError();
     }
@@ -229,6 +231,7 @@ class actionModel extends model
         $orderBy = $origin == '' ? 'id' : '`date`_desc';
         $actions = $this->dao->select('*')->from(TABLE_ACTION)
             ->where('1 = 1')
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF($objectType == 'customer' || $objectType == 'provider')->andWhere('customer')->eq($objectID)->fi()
             ->beginIF($objectType == 'contact')->andWhere('contact')->eq($objectID)->fi()
             ->beginIF($objectType != 'customer' and $objectType != 'provider' and $objectType != 'contact')
@@ -285,6 +288,7 @@ class actionModel extends model
         $extra = $type == 'hidden' ? self::BE_HIDDEN : self::CAN_UNDELETED;
         $trashes = $this->dao->select('*')->from(TABLE_ACTION)
             ->where('action')->eq('deleted')
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('extra')->eq($extra)
             ->orderBy($orderBy)->page($pager)->fetchAll();
         if(!$trashes) return array();
@@ -303,7 +307,7 @@ class actionModel extends model
             $field     = $this->config->action->objectNameFields[$objectType];
 
             if(!$table) continue;
-            $objectNames[$objectType] = $this->dao->select("id, $field AS name")->from($table)->where('id')->in($objectIds)->fetchPairs();
+            $objectNames[$objectType] = $this->dao->select("id, $field AS name")->from($table)->where('id')->in($objectIds) ->andWhere('account_id')->eq($this->app->user->accountId)->fetchPairs();
 
             /* Get titles if objectType is order. */
             if($objectType == 'order')
@@ -328,7 +332,7 @@ class actionModel extends model
      */
     public function getHistory($actionID)
     {
-        return $this->dao->select('*')->from(TABLE_HISTORY)->where('action')->in($actionID)->orderBy('id')->fetchGroup('action');
+        return $this->dao->select('*')->from(TABLE_HISTORY)->where('action')->in($actionID) ->andWhere('account_id')->eq($this->app->user->accountId)->orderBy('id')->fetchGroup('action');
     }
 
     /**
@@ -340,7 +344,7 @@ class actionModel extends model
      */
     public function getDatingById($id)
     {
-        return $this->dao->select('*')->from(TABLE_DATING)->where('id')->eq($id)->fetch();
+        return $this->dao->select('*')->from(TABLE_DATING)->where('id')->eq($id) ->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
     }
 
     /**
@@ -355,6 +359,7 @@ class actionModel extends model
     {
         return $this->dao->select('*')->from(TABLE_DATING)
             ->where('status')->eq('wait')
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('objectType')->eq($objectType)
             ->andWhere('objectID')->eq($objectID)
             ->orderBy('date, id')
@@ -373,6 +378,7 @@ class actionModel extends model
     {
         return $this->dao->select('MIN(date) AS date')->from(TABLE_DATING)
             ->where('status')->eq('wait')
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('objectType')->eq($objectType)
             ->andWhere('objectID')->eq($objectID)
             ->fetch('date');
@@ -391,6 +397,7 @@ class actionModel extends model
         foreach($changes as $change) 
         {
             $change['action'] = $actionID;
+            $change['account_id']= $this->app->user->accountId;
             $this->dao->insert(TABLE_HISTORY)->data($change)->exec();
         }
     }
@@ -487,6 +494,7 @@ class actionModel extends model
         /* Get actions. */
         $actions = $this->dao->select('*')->from(TABLE_ACTION)
             ->where(1)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('objectType')->notin('attend,refund,leave,overtime,trip,egress,action')
             ->beginIF($period != 'bysearch' && $period  != 'all')->andWhere('date')->gt($begin)->fi()
             ->beginIF($period != 'bysearch' && $period  != 'all')->andWhere('date')->lt($end)->fi()
@@ -504,7 +512,7 @@ class actionModel extends model
             if($this->checkPriv($action)) $idList[] = $action->id;
         }
         /* Fix pager. */
-        $actionIDList = $this->dao->select('id')->from(TABLE_ACTION)->where('id')->in($idList)->orderBy($orderBy)->page($pager)->fetchAll('id');
+        $actionIDList = $this->dao->select('id')->from(TABLE_ACTION)->where('id')->in($idList)->andWhere('account_id')->eq($this->app->user->accountId)->orderBy($orderBy)->page($pager)->fetchAll('id');
         foreach($actions as $key => $action)
         {
             if(!isset($actionIDList[$action->id])) unset($actions[$key]);
@@ -533,7 +541,7 @@ class actionModel extends model
             $field     = $this->config->action->objectNameFields[$objectType];
             if($table != TABLE_TODO and $table != TABLE_TRADE)
             {
-                $objectNames[$objectType] = $this->dao->select("id, $field AS name")->from($table)->where('id')->in($objectIds)->fetchPairs();
+                $objectNames[$objectType] = $this->dao->select("id, $field AS name")->from($table)->where('id')->in($objectIds)->andWhere('account_id')->eq($this->app->user->accountId)->fetchPairs();
                 if($objectType == 'order')
                 {
                     $orders = $this->loadModel('order', 'crm')->getByIdList($objectIds);
@@ -542,17 +550,18 @@ class actionModel extends model
             }
             elseif($table == TABLE_TODO)
             {
-                $todos = $this->dao->select("id, $field AS name, account, private, type, idvalue")->from($table)->where('id')->in($objectIds)->fetchAll('id');
+                $todos = $this->dao->select("id, $field AS name, account, private, type, idvalue")->from($table)->where('id')->in($objectIds)->andWhere('account_id')->eq($this->app->user->accountId)->fetchAll('id');
                 foreach($todos as $id => $todo)
                 {
-                    if($todo->type == 'task') $todo->name = $this->dao->findById($todo->idvalue)->from(TABLE_TASK)->fetch('name');
-                    if($todo->type == 'customer') $todo->name = $this->dao->findById($todo->idvalue)->from(TABLE_CUSTOMER)->fetch('name'); 
+                    if($todo->type == 'task') $todo->name = $this->dao->findById($todo->idvalue)->from(TABLE_TASK)->andWhere('account_id')->eq($this->app->user->accountId)->fetch('name');
+                    if($todo->type == 'customer') $todo->name = $this->dao->findById($todo->idvalue)->from(TABLE_CUSTOMER)->andWhere('account_id')->eq($this->app->user->accountId)->fetch('name');
                     if($todo->type == 'order') 
                     {
                         $order = $this->dao->select('c.name, o.createdDate')
                             ->from(TABLE_ORDER)->alias('o')
                             ->leftJoin(TABLE_CUSTOMER)->alias('c')->on('o.customer=c.id')
                             ->where('o.id')->eq($todo->idvalue)
+                            ->andWhere('account_id')->eq($this->app->user->accountId)
                             ->fetch(); 
                         $todo->name = $order->name . '|' . date('Y-m-d', strtotime($order->createdDate));
                     }
@@ -571,7 +580,7 @@ class actionModel extends model
             else
             {
                 $this->app->loadLang('trade', 'cash');
-                $trades = $this->dao->select("id, type, money, currency")->from($table)->where('id')->in($objectIds)->fetchAll('id');
+                $trades = $this->dao->select("id, type, money, currency")->from($table)->where('id')->in($objectIds)->andWhere('account_id')->eq($this->app->user->accountId)->fetchAll('id');
                 foreach($trades as $id => $trade)
                 {
                     $objectNames[$objectType][$id] = $this->lang->trade->typeList[$trade->type] . $this->lang->currencySymbols[$trade->currency] . $trade->money;
@@ -695,15 +704,15 @@ class actionModel extends model
 
         /* Update deleted field in object table. */
         $table = $this->config->objectTables[$action->objectType];
-        $this->dao->update($table)->set('deleted')->eq(0)->where('id')->eq($action->objectID)->exec();
+        $this->dao->update($table)->set('deleted')->eq(0)->where('id')->eq($action->objectID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         if($action->objectType == 'project' && !dao::isError())
         {
-            $this->dao->update(TABLE_TASK)->set('deleted')->eq('0')->where('project')->eq($action->objectID)->exec();
-            $this->dao->update(TABLE_DOCLIB)->set('deleted')->eq('0')->where('project')->eq($action->objectID)->exec();
+            $this->dao->update(TABLE_TASK)->set('deleted')->eq('0')->where('project')->eq($action->objectID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+            $this->dao->update(TABLE_DOCLIB)->set('deleted')->eq('0')->where('project')->eq($action->objectID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         }
 
         /* Update action record in action table. */
-        $this->dao->update(TABLE_ACTION)->set('extra')->eq(ACTIONMODEL::BE_UNDELETED)->where('id')->eq($actionID)->exec();
+        $this->dao->update(TABLE_ACTION)->set('extra')->eq(ACTIONMODEL::BE_UNDELETED)->where('id')->eq($actionID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         $this->action->create($action->objectType, $action->objectID, 'undeleted');
     }
 
@@ -717,7 +726,7 @@ class actionModel extends model
      */
     public function update($action, $actionID)
     {
-        $this->dao->update(TABLE_ACTION)->data($action, $skip = 'referer')->autoCheck()->where('id')->eq($actionID)->exec();
+        $this->dao->update(TABLE_ACTION)->data($action, $skip = 'referer')->autoCheck()->where('id')->eq($actionID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         return !dao::isError();
     }
 
@@ -740,6 +749,7 @@ class actionModel extends model
             ->set('date')->eq(helper::now())
             ->set('comment')->eq($action->comment)
             ->where('id')->eq($actionID)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->exec();
     }
 
@@ -755,7 +765,7 @@ class actionModel extends model
         $action = $this->getById($actionID);
         if($action->action != 'deleted') return;
 
-        $this->dao->update(TABLE_ACTION)->set('extra')->eq(self::BE_HIDDEN)->where('id')->eq($actionID)->exec();
+        $this->dao->update(TABLE_ACTION)->set('extra')->eq(self::BE_HIDDEN)->where('id')->eq($actionID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         $this->create($action->objectType, $action->objectID, 'hidden');
     }
 
@@ -771,6 +781,7 @@ class actionModel extends model
             ->set('extra')->eq(self::BE_HIDDEN)
             ->where('action')->eq('deleted')
             ->andWhere('extra')->eq(self::CAN_UNDELETED)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->exec();
     }
 
@@ -794,14 +805,14 @@ class actionModel extends model
 
         /* Update action data. */
         $account = $this->app->user->account;
-        $reader = $this->dao->select('reader')->from(TABLE_ACTION)->where('id')->eq($actionID)->fetch('reader');
+        $reader = $this->dao->select('reader')->from(TABLE_ACTION)->where('id')->eq($actionID)->andWhere('account_id')->eq($this->app->user->accountId)->fetch('reader');
         $readers = explode(',', trim($reader, ','));
         foreach($readers as $key => $value) if($value == $account or $value == '') unset($readers[$key]);
 
         $read = empty($readers) ? 1 : 0;
         $reader = empty($readers) ? '' : ',' . join(',', $readers) . ',';
         
-        $this->dao->update(TABLE_ACTION)->set('read')->eq($read)->set('reader')->eq($reader)->where('id')->eq($actionID)->exec();
+        $this->dao->update(TABLE_ACTION)->set('read')->eq($read)->set('reader')->eq($reader)->where('id')->eq($actionID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         return !dao::isError();
     }
 
@@ -832,9 +843,9 @@ class actionModel extends model
         if(!empty($readers)) 
         {
             $reader = ',' . join(',', $readers) . ',';
-            $oldReader = $this->dao->select('reader')->from(TABLE_ACTION)->where('id')->eq($actionID)->fetch('reader');
+            $oldReader = $this->dao->select('reader')->from(TABLE_ACTION)->where('id')->eq($actionID)->andWhere('account_id')->eq($this->app->user->accountId)->fetch('reader');
             if(!empty($oldReader)) $reader .= $oldReader;
-            $this->dao->update(TABLE_ACTION)->set('read')->eq(0)->set('reader')->eq($reader)->where('id')->eq($actionID)->exec();
+            $this->dao->update(TABLE_ACTION)->set('read')->eq(0)->set('reader')->eq($reader)->where('id')->eq($actionID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         }
 
         return join(',', $failedReaders);
@@ -856,6 +867,7 @@ class actionModel extends model
         $actions = $this->dao->select('*')->from(TABLE_ACTION)
             ->where('`read`')->eq('0')
             ->andWhere('reader')->like("%,$account,%")
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIf($skipNotice != '')->andWhere('id')->notin($skipNotice)->fi()
             ->orderBy('id_desc')
             ->fetchAll('id');
