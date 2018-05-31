@@ -92,7 +92,7 @@ class baseHelper
         {
             $link .= "?{$config->moduleVar}=$moduleName&{$config->methodVar}=$methodName";
             if($viewType != 'html') $link .= "&{$config->viewVar}=" . $viewType;
-            foreach($vars as $key => $value) $link .= "&$key=$value".'&accountId='.$app->accountId;
+            foreach($vars as $key => $value) $link .= "&$key=$value";
             return self::processOnlyBodyParam($link, $onlyBody);
         }
 
@@ -106,7 +106,7 @@ class baseHelper
         {
             $link .= "$moduleName{$config->requestFix}$methodName";
             foreach($vars as $value) $link .= "{$config->requestFix}$value";
-            $link .= '.' . $viewType.'?accountId='.$app->accountId;
+            $link .= '.' . $viewType;
 
             return self::processOnlyBodyParam($link, $onlyBody);
         }
@@ -118,7 +118,7 @@ class baseHelper
          */
         if($moduleName == $config->default->module)
         {
-            $link .= $config->default->method . '.' . $viewType.'?accountId='.$app->accountId;
+            $link .= $config->default->method . '.' . $viewType; 
             return self::processOnlyBodyParam($link, $onlyBody);
         }
 
@@ -129,7 +129,7 @@ class baseHelper
          */
         if($viewType == $app->getViewType())
         {
-            $link .= $moduleName . '/'.'?accountId='.$app->accountId;
+            $link .= $moduleName . '/';
             return self::processOnlyBodyParam($link, $onlyBody);
         }
 
@@ -138,7 +138,7 @@ class baseHelper
          * Input: moduleName=article&methodName=index&viewType=json. Output: /article.json
          *
          */
-        $link .= $moduleName . '.' . $viewType.'?accountId='.$app->accountId;
+        $link .= $moduleName . '.' . $viewType;
         return self::processOnlyBodyParam($link, $onlyBody);
     }
 

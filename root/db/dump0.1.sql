@@ -19,10 +19,10 @@
 -- Table structure for table `acount`
 --
 
-DROP TABLE IF EXISTS `acount`;
+DROP TABLE IF EXISTS `account`;
 /*!40101 SET @saved_cs_client = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `acount` (
+CREATE TABLE `account` (
   `id`         mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `user_id`    mediumint(8) unsigned NOT NULL,
   `account_id` mediumint(8) unsigned NOT NULL,
@@ -38,10 +38,10 @@ CREATE TABLE `acount` (
 -- Dumping data for table `acount`
 --
 
-LOCK TABLES `acount` WRITE;
+LOCK TABLES `account` WRITE;
 /*!40000 ALTER TABLE `acount`
   DISABLE KEYS */;
-INSERT INTO `acount` VALUES (3, 1, 1), (4, 2, 1);
+INSERT INTO account VALUES (3, 1, 1), (4, 2, 1);
 /*!40000 ALTER TABLE `acount`
   ENABLE KEYS */;
 UNLOCK TABLES;

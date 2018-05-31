@@ -28,16 +28,10 @@ include "$frameworkRoot/helper.class.php";
 /* Log the time and define the run mode. */
 $startTime = getTime();
 
-$accountId = $_GET['accountId'];
 /* Run the app. */
-$app = router::createApp($appName,'','',$accountId);
+$app = router::createApp($appName);
 
 $common = $app->loadCommon();
-
-if ($config->debug == true) {
-//    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/loader.php", "37");
-    $app->log("accountId:" . $app->accountId, "loader.php", "39");
-}
 
 /* Check the reqeust is getconfig or not. */
 if (isset($_GET['mode']) && $_GET['mode'] == 'getconfig') die(helper::removeUTF8Bom($app->exportConfig()));
@@ -54,6 +48,11 @@ if ($app->clientDevice == 'mobile' and strpos($config->installedVersion, 'pro') 
 $app->parseRequest();
 $common->checkPriv();
 $app->loadModule();
+
+if ($config->debug == true) {
+//    $app->log("appname:" . $appName . " and username:" . $app->user->account, $frameworkRoot . "/loader.php", "37");
+    $app->log("accountId:" . $app->user->accountId, "loader.php", "54");
+}
 
 /* Flush the buffer. */
 echo helper::removeUTF8Bom(ob_get_clean());

@@ -40,11 +40,10 @@ class router extends baseRouter
      * @access public
      * @return void
      */
-    public function __construct($appName = 'demo', $appRoot = '',$accountId)
+    public function __construct($appName = 'demo', $appRoot = '')
     {
         parent::__construct($appName, $appRoot);
         $this->setAppName($appName);
-        $this->setAccountId($accountId);
         $this->setStaticRoot();
         $this->setDataRoot();
         $this->setThemeRoot();
@@ -61,10 +60,10 @@ class router extends baseRouter
      * @access public
      * @return object   the app object
      */
-    public static function createApp($appName = 'demo', $appRoot = '', $className = '',$accountId = '')
+    public static function createApp($appName = 'demo', $appRoot = '', $className = '')
     {
         if(empty($className)) $className = __CLASS__;
-        return new $className($appName, $appRoot,$accountId);
+        return new $className($appName, $appRoot);
     }
 
     /**
@@ -96,16 +95,6 @@ class router extends baseRouter
     public function setStaticRoot()
     {
         $this->staticRoot = $this->basePath . 'www' . DS;
-    }
-    /**
-     * Set the accountId.
-     *
-     * @access protected
-     * @return void
-     */
-    public function setAccountId($accountId)
-    {
-        $this->accountId = $accountId;
     }
     /**
      * 设置www的根目录。

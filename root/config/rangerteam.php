@@ -46,6 +46,8 @@ $config->excel->titleFields  = array();
 $config->excel->centerFields = array();
 $config->excel->dateFields   = array();
 $config->excel->freeze       = new stdclass();
+/* Tables for basic account */
+if(!defined('TABLE_ACCOUNT'))   define('TABLE_ACCOUNT',    '`' . $config->db->prefix . 'account`');
 
 /* Tables for basic system. */
 if(!defined('TABLE_CONFIG'))    define('TABLE_CONFIG',    '`' . $config->db->prefix . 'sys_config`');
