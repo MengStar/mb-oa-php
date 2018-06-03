@@ -122,7 +122,7 @@ class sso extends control
         {
             if(empty($dataList)) continue;
 
-            $todos = $this->dao->select('*')->from(TABLE_TODO)->where('type')->eq("{$code}_{$type}")->fetchAll('idvalue');
+            $todos = $this->dao->select('*')->from(TABLE_TODO)->where('type')->eq("{$code}_{$type}")->andWhere('account_id')->eq($this->app->user->accountId)->fetchAll('idvalue');
             foreach($dataList as $id => $data)
             {
                 if(isset($todos[$id]))
@@ -157,7 +157,7 @@ class sso extends control
         if($key != $this->get->key) die('KEY ERROR');
 
         $yesterday = date('Y-m-d', strtotime('yesterday'));
-        $leaveUsers = $this->dao->select('*')->from(TABLE_LEAVE)->where('begin')->le($yesterday)->andWhere('end')->ge($yesterday)->fetchPairs('createdBy', 'createdBy');
+        $leaveUsers = $this->dao->select('*')->from(TABLE_LEAVE)->where('begin')->le($yesterday)->andWhere('account_id')->eq($this->app->user->accountId)->andWhere('end')->ge($yesterday)->fetchPairs('createdBy', 'createdBy');
 
         die(json_encode($leaveUsers));
     }

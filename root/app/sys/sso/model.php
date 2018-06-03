@@ -24,7 +24,7 @@ class ssoModel extends model
         $key = $this->getAppKey($code);
         if(!$account or !$authcode or !$key) return false;
   
-        $user = $this->dao->select('*')->from(TABLE_USER)->where('account')->eq($account)->fetch();
+        $user = $this->dao->select('*')->from(TABLE_USER)->where('account')->eq($account)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
         if($user)
         {
             $auth = md5($user->password . $key);
@@ -69,7 +69,7 @@ class ssoModel extends model
      */
     public function getAppKey($code)
     {
-        return $this->dao->select('`key`')->from(TABLE_ENTRY)->where('code')->eq($code)->fetch('key');
+        return $this->dao->select('`key`')->from(TABLE_ENTRY)->where('code')->eq($code)->andWhere('account_id')->eq($this->app->user->accountId)->fetch('key');
     }
 
     /**
@@ -81,7 +81,7 @@ class ssoModel extends model
      */
     public function getByToken($token)
     {
-        return $this->dao->select('*')->from(TABLE_SSO)->where('token')->eq($token)->fetch();
+        return $this->dao->select('*')->from(TABLE_SSO)->where('token')->eq($token)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
     }
 
     /**
@@ -98,10 +98,11 @@ class ssoModel extends model
         $data->sid   = $sid;
         $data->entry = $entryID;
         $data->time  = helper::now();
+        $data->account_id = $this->app->user->accountId;
         $data->token = md5($sid . $entryID . helper::now());
-        $this->dao->delete()->from(TABLE_SSO)->where('sid')->eq($sid)->andWhere('entry')->eq($entryID)->exec();
+        $this->dao->delete()->from(TABLE_SSO)->where('sid')->eq($sid)->andWhere('entry')->eq($entryID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         /* Delete the overdue token. */
-        $this->dao->delete()->from(TABLE_SSO)->where('time')->lt(date('Y-m-d H:i:s', strtotime("-2 hour")))->exec();
+        $this->dao->delete()->from(TABLE_SSO)->where('time')->lt(date('Y-m-d H:i:s', strtotime("-2 hour")))->andWhere('account_id')->eq($this->app->user->accountId)->exec();
         $this->dao->insert(TABLE_SSO)->data($data)->exec();
         return $data->token;
     }
@@ -221,7 +222,7 @@ class ssoModel extends model
      */
     public function getZentaoTodoList($code = '', $account = '')
     {
-        $entry = $this->dao->select('*')->from(TABLE_ENTRY)->where('zentao')->eq(1)->andWhere('code')->eq($code)->fetch();
+        $entry = $this->dao->select('*')->from(TABLE_ENTRY)->where('zentao')->eq(1)->andWhere('code')->eq($code)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
         if(strpos($entry->login, '&') === false) $zentaoUrl = substr($entry->login, 0, strrpos($entry->login, '/') + 1);
         if(strpos($entry->login, '&') !== false) $zentaoUrl = substr($entry->login, 0, strpos($entry->login, '?'));
 
