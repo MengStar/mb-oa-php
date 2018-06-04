@@ -72,7 +72,6 @@ class tree extends control
     {
         /* Get current category. */
         $category = $this->tree->getById($categoryID);
-
         if($category->type == 'out') $this->tree->checkRight($category->id);
 
         /* If type is forum, assign board to category. */
@@ -154,7 +153,7 @@ class tree extends control
         if($type == 'forum')
         {
             $this->lang->category = $this->lang->board;
-            $this->view->boardChildrenCount = $this->dao->select('count(*) as count')->from(TABLE_CATEGORY)->where('grade')->eq(2)->andWhere('type')->eq('forum')->fetch('count');
+            $this->view->boardChildrenCount = $this->dao->select('count(*) as count')->from(TABLE_CATEGORY)->where('grade')->eq(2)->andWhere('account_id')->eq($this->app->user->accountId)->andWhere('type')->eq('forum')->fetch('count');
         }
         if($type == 'dept')
         {

@@ -23,8 +23,8 @@ class treeModel extends model
      */
     public function getByID($categoryID, $type = 'article')
     {
-        $category = $this->dao->select('*')->from(TABLE_CATEGORY)->where('id')->eq($categoryID)->fetch();
-        if(!$category) $category = $this->dao->select('*')->from(TABLE_CATEGORY)->where('alias')->eq($categoryID)->beginIF($type)->andWhere('type')->eq($type)->fi()->fetch();
+        $category = $this->dao->select('*')->from(TABLE_CATEGORY)->where('id')->eq($categoryID)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
+        if(!$category) $category = $this->dao->select('*')->from(TABLE_CATEGORY)->where('alias')->eq($categoryID)->andWhere('account_id')->eq($this->app->user->accountId)->beginIF($type)->andWhere('type')->eq($type)->fi()->fetch();
         if(!$category) return false;
 
         if($category->type == 'forum') 
@@ -40,7 +40,7 @@ class treeModel extends model
             }
         }
 
-        $category->pathNames = $this->dao->select('id, name')->from(TABLE_CATEGORY)->where('id')->in($category->path)->orderBy('grade')->fetchPairs();
+        $category->pathNames = $this->dao->select('id, name')->from(TABLE_CATEGORY)->where('id')->in($category->path)->andWhere('account_id')->eq($this->app->user->accountId)->orderBy('grade')->fetchPairs();
         $category = $this->loadModel('file')->replaceImgURL($category, 'desc');
         return $category;
     }
@@ -56,6 +56,7 @@ class treeModel extends model
     public function getFirst($type = 'article', $root = 0)
     {
         return $this->dao->select('*')->from(TABLE_CATEGORY)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->where('type')->eq($type)
             ->beginIF($root)->andWhere('root')->eq((int)$root)->fi()
             ->orderBy('id')->limit(1)->fetch();
@@ -73,6 +74,7 @@ class treeModel extends model
     {
         $categories = $this->dao->select('*')->from(TABLE_CATEGORY)
             ->where(1)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF($type)->andWhere('type')->eq($type)->fi()
             ->fetchAll('id');
 
@@ -96,7 +98,7 @@ class treeModel extends model
      */
     public function getListByType($type = 'article', $orderBy = 'id_asc')
     {
-        return $this->dao->select('*')->from(TABLE_CATEGORY)->where('type')->eq($type)->orderBy($orderBy)->fetchAll('id');
+        return $this->dao->select('*')->from(TABLE_CATEGORY)->where('type')->eq($type)->andWhere('account_id')->eq($this->app->user->accountId)->orderBy($orderBy)->fetchAll('id');
     }
 
     /**
@@ -110,11 +112,11 @@ class treeModel extends model
     {
         if($categoryID == 0) return array();
 
-        $path = $this->dao->select('path')->from(TABLE_CATEGORY)->where('id')->eq((int)$categoryID)->fetch('path');
+        $path = $this->dao->select('path')->from(TABLE_CATEGORY)->where('id')->eq((int)$categoryID)->andWhere('account_id')->eq($this->app->user->accountId)->fetch('path');
         $path = trim($path, ',');
         if(!$path) return array();
 
-        return $this->dao->select('*')->from(TABLE_CATEGORY)->where('id')->in($path)->orderBy('grade')->fetchAll('id');
+        return $this->dao->select('*')->from(TABLE_CATEGORY)->where('id')->in($path)->andWhere('account_id')->eq($this->app->user->accountId)->orderBy('grade')->fetchAll('id');
     }
 
     /**
@@ -131,11 +133,12 @@ class treeModel extends model
         if($categoryID == 0 and empty($type)) return array();
         $category = $this->getById($categoryID);
 
-        if($category)  return $this->dao->select('id')->from(TABLE_CATEGORY)->where('path')->like($category->path . '%')->fetchPairs();
+        if($category)  return $this->dao->select('id')->from(TABLE_CATEGORY)->where('path')->like($category->path . '%')->andWhere('account_id')->eq($this->app->user->accountId)->fetchPairs();
         if(!$category)
         {
             return $this->dao->select('id')->from(TABLE_CATEGORY)
                 ->where('type')->eq($type)
+                ->andWhere('account_id')->eq($this->app->user->accountId)
                 ->beginIF($root)->andWhere('root')->eq((int)$root)->fi()
                 ->fetchPairs();
         }
@@ -154,6 +157,7 @@ class treeModel extends model
     {
         $categories = $this->dao->select('*')->from(TABLE_CATEGORY)
             ->where('parent')->eq((int)$categoryID)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('type')->eq($type)
             ->beginIF($root)->andWhere('root')->eq((int)$root)->fi()
             ->orderBy('`order`')
@@ -176,7 +180,7 @@ class treeModel extends model
         $module = $this->getById((int)$moduleID);
         if(empty($module)) return array();
 
-        return $this->dao->select('id')->from(TABLE_CATEGORY)->where('path')->like($module->path . '%')->fetchPairs();
+        return $this->dao->select('id')->from(TABLE_CATEGORY)->where('path')->like($module->path . '%')->andWhere('account_id')->eq($this->app->user->accountId)->fetchPairs();
     }
 
     /**
@@ -190,6 +194,7 @@ class treeModel extends model
     {
         return $this->dao->select('*')->from(TABLE_CATEGORY)
             ->where('moderators')->eq(",$account,")
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('type')->eq('dept')
             ->fetchAll('id');
     }
@@ -215,6 +220,7 @@ class treeModel extends model
 
         return $this->dao->select('*')->from(TABLE_CATEGORY)
             ->where('type')->eq($type)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF($root)->andWhere('root')->eq((int)$root)->fi()
             ->beginIF($startPath)->andWhere('path')->like($startPath)->fi()
             ->orderBy('grade desc, `order`')
@@ -357,8 +363,8 @@ class treeModel extends model
     {
         $menu = "<ul class='tree'>";
         $products = $this->loadModel('product')->getPairs();
-        $modules  = $this->dao->findByType('productdoc')->from(TABLE_CATEGORY)->orderBy('`order`')->fetchAll();
-        $projectModules = $this->dao->findByType('projectdoc')->from(TABLE_CATEGORY)->orderBy('`order`')->fetchAll();
+        $modules  = $this->dao->findByType('productdoc')->from(TABLE_CATEGORY)->where('account_id')->eq($this->app->user->accountId)->orderBy('`order`')->fetchAll();
+        $projectModules = $this->dao->findByType('projectdoc')->from(TABLE_CATEGORY)->where('account_id')->eq($this->app->user->accountId)->orderBy('`order`')->fetchAll();
 
         foreach($products as $productID =>$productName)
         {
@@ -445,6 +451,7 @@ class treeModel extends model
 
         return $this->dao->select('*')->from(TABLE_CATEGORY)
             ->where('root')->eq((int)$rootID)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('type')->eq($type)
             ->beginIF($startCategoryPath)->andWhere('path')->like($startCategoryPath)->fi()
             ->orderBy('grade desc, `order`')
@@ -668,7 +675,7 @@ class treeModel extends model
 
         $parent = $this->getById($this->post->parent);
         $category->grade = $parent ? $parent->grade + 1 : 1;
-
+        $category->account_id = $this->app->user->accountId;
         $this->dao->update(TABLE_CATEGORY)
             ->data($category, $skip = 'uid')
             ->autoCheck()
@@ -693,11 +700,11 @@ class treeModel extends model
         $category = $this->getById($categoryID);
         $family   = $this->getFamily($categoryID);
 
-        $this->dao->update(TABLE_CATEGORY)->set('grade = grade - 1')->where('id')->in($family)->exec();                      // Update family's grade.
-        $this->dao->update(TABLE_CATEGORY)->set('parent')->eq($category->parent)->where('parent')->eq($categoryID)->exec();  // Update children's parent to their grandpa.
+        $this->dao->update(TABLE_CATEGORY)->set('grade = grade - 1')->where('id')->in($family) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();                      // Update family's grade.
+        $this->dao->update(TABLE_CATEGORY)->set('parent')->eq($category->parent)->where('parent')->eq($categoryID) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();  // Update children's parent to their grandpa.
         $this->dao->delete()->from(TABLE_CATEGORY)->where('id')->eq($categoryID)->exec();                                    // Delete my self.
         $this->fixPath($category->type);
-        if($category->type == 'entry') $this->dao->update(TABLE_ENTRY)->set('category')->eq('0')->where('category')->eq($categoryID)->exec(); // Update entry's category.
+        if($category->type == 'entry') $this->dao->update(TABLE_ENTRY)->set('category')->eq('0')->where('category')->eq($categoryID) ->andWhere('account_id')->eq($this->app->user->accountId)->exec(); // Update entry's category.
 
         return !dao::isError();
     }
@@ -721,7 +728,7 @@ class treeModel extends model
             unset($children[$originCategoryID]);
             if(!empty($children)) return array('result' => 'fail', 'message' => sprintf($this->lang->tree->asParent, $originCategory->name));
 
-            $this->dao->update(TABLE_TRADE)->set('category')->eq($targetCategoryID)->where('category')->eq($originCategoryID)->exec();
+            $this->dao->update(TABLE_TRADE)->set('category')->eq($targetCategoryID)->where('category')->eq($originCategoryID) ->andWhere('account_id')->eq($this->app->user->accountId)->exec();
             if(!dao::isError()) $this->dao->delete()->from(TABLE_CATEGORY)->where('id')->eq($originCategoryID)->exec();
         }
 
@@ -760,6 +767,7 @@ class treeModel extends model
             /* First, save the child without path field. */
             $category->name  = strip_tags(trim($categoryName));
             $category->order = $order;
+            $category->account_id = $this->app->user->accountId;
             $mode = $this->post->mode[$key];
 
             if($mode == 'new')
@@ -802,6 +810,7 @@ class treeModel extends model
         /* Get all categories grouped by parent. */
         $groupCategories = $this->dao->select('id, parent')->from(TABLE_CATEGORY)
             ->where('type')->eq($type)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->fetchGroup('parent', 'id');
         $categories = array();
 
