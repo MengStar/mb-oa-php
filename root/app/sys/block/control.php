@@ -1,4 +1,5 @@
 <?php
+
 /**
  * The control file of block module of RanZhi.
  *
@@ -12,9 +13,9 @@
 class block extends control
 {
     /**
-     * Admin all blocks. 
-     * 
-     * @param  int    $index 
+     * Admin all blocks.
+     *
+     * @param  int $index
      * @access public
      * @return void
      */
@@ -24,66 +25,65 @@ class block extends control
 
         $entries = $this->dao->select('*')->from(TABLE_ENTRY)
             ->where('block')->ne('')
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->orWhere('buildin')->eq(1)
             ->fetchAll('id');
 
-        if(!$index) $index = $this->block->getLastKey('sys') + 1;
+        if (!$index) $index = $this->block->getLastKey('sys') + 1;
 
         $allEntries[''] = '';
-        foreach($entries as $id => $entry)
-        {
-            if(!commonModel::hasAppPriv($entry->code)) continue;
+        foreach ($entries as $id => $entry) {
+            if (!commonModel::hasAppPriv($entry->code)) continue;
             $allEntries[$entry->code] = $entry->name;
         }
 
         //$allEntries['rss']  = 'RSS';
         $allEntries['html'] = 'HTML';
         $allEntries['allEntries'] = $this->lang->block->allEntries;
-        $allEntries['dynamic']    = $this->lang->block->dynamic;
+        $allEntries['dynamic'] = $this->lang->block->dynamic;
 
         $hiddenBlocks = $this->block->getHiddenBlocks();
-        foreach($hiddenBlocks as $block) $allEntries['hiddenBlock' . $block->id] = $block->title;
+        foreach ($hiddenBlocks as $block) $allEntries['hiddenBlock' . $block->id] = $block->title;
 
-        $this->view->block      = $this->block->getBlock($index);
-        $this->view->entries    = $entries;
+        $this->view->block = $this->block->getBlock($index);
+        $this->view->entries = $entries;
         $this->view->allEntries = $allEntries;
-        $this->view->index      = $index;
-        $this->view->title      = $title;
+        $this->view->index = $index;
+        $this->view->title = $title;
         $this->display();
     }
 
     /**
-     * Set params when type is rss or html. 
-     * 
-     * @param  int    $index 
-     * @param  string $type 
-     * @param  int    $blockID 
+     * Set params when type is rss or html.
+     *
+     * @param  int $index
+     * @param  string $type
+     * @param  int $blockID
      * @access public
      * @return void
      */
     public function set($index, $type, $blockID = 0)
     {
-        if($_POST)
-        {
+        if ($_POST) {
             $this->block->save($index, $type, 'sys', $blockID);
-            if(dao::isError())  $this->send(array('result' => 'fail', 'message' => dao::geterror()));
+            if (dao::isError()) $this->send(array('result' => 'fail', 'message' => dao::geterror()));
             $this->send(array('result' => 'success', 'message' => $this->lang->saveSuccess, 'locate' => $this->createLink('index')));
         }
 
         $block = $blockID ? $this->block->getByID($blockID) : $this->block->getBlock($index);
-        if($block) $type = $block->block;
+        if ($block) $type = $block->block;
 
-        $this->view->type    = $type;
-        $this->view->index   = $index;
+        $this->view->type = $type;
+        $this->view->index = $index;
         $this->view->blockID = $blockID;
-        $this->view->block   = ($block) ? $block : array();
+        $this->view->block = ($block) ? $block : array();
         $this->display();
     }
 
     /**
-     * Print block. 
-     * 
-     * @param  int    $index 
+     * Print block.
+     *
+     * @param  int $index
      * @access public
      * @return void
      */
@@ -91,57 +91,48 @@ class block extends control
     {
         $block = $this->block->getBlock($index);
 
-        if(empty($block)) return false;
+        if (empty($block)) return false;
 
         $html = '';
-        if($block->block == 'html')
-        {
-            $html = "<div class='article-content'>" . htmlspecialchars_decode($block->params->html) .'</div>';
-        }
-        elseif($block->block == 'rss')
-        {
+        if ($block->block == 'html') {
+            $html = "<div class='article-content'>" . htmlspecialchars_decode($block->params->html) . '</div>';
+        } elseif ($block->block == 'rss') {
             $html = $this->block->getRss($block);
-        }
-        elseif($block->source != '')
-        {
+        } elseif ($block->source != '') {
             $html = $this->block->getEntry($block);
-        }
-        elseif($block->block == 'allEntries')
-        {
+        } elseif ($block->block == 'allEntries') {
             $html = $this->fetch('block', 'entries');
-        }
-        elseif($block->block == 'dynamic')
-        {
+        } elseif ($block->block == 'dynamic') {
             $html = $this->fetch('block', 'dynamic');
         }
-        
+
         die($html);
     }
 
     /**
      * Sort block.
-     * 
-     * @param  string    $oldOrder 
-     * @param  string    $newOrder 
-     * @param  string    $app 
+     *
+     * @param  string $oldOrder
+     * @param  string $newOrder
+     * @param  string $app
      * @access public
      * @return void
      */
     public function sort($oldOrder, $newOrder, $app = 'sys')
     {
-        $oldOrder  = explode(',', $oldOrder);
-        $newOrder  = explode(',', $newOrder);
+        $oldOrder = explode(',', $oldOrder);
+        $newOrder = explode(',', $newOrder);
         $orderList = $this->block->getBlockList($app);
 
-        foreach($oldOrder as $key => $oldIndex)
-        {
-            if(!isset($orderList[$oldIndex])) continue;
+        foreach ($oldOrder as $key => $oldIndex) {
+            if (!isset($orderList[$oldIndex])) continue;
             $order = $orderList[$oldIndex];
             $order->order = $newOrder[$key];
+            $order->account_id = $this->app->user->accountId;
             $this->dao->replace(TABLE_BLOCK)->data($order)->exec();
         }
 
-        if(dao::isError()) $this->send(array('result' => 'fail'));
+        if (dao::isError()) $this->send(array('result' => 'fail'));
         $this->send(array('result' => 'success'));
     }
 
@@ -154,53 +145,48 @@ class block extends control
     public function resize($id, $type, $data)
     {
         $block = $this->block->getByID($id);
-        if($block)
-        {
+        if ($block) {
             $field = '';
-            if($type == 'vertical') $field = 'height';
-            if($type == 'horizontal') $field = 'grid';
-            if(empty($field)) $this->send(array('result' => 'fail', 'code' => 400));
+            if ($type == 'vertical') $field = 'height';
+            if ($type == 'horizontal') $field = 'grid';
+            if (empty($field)) $this->send(array('result' => 'fail', 'code' => 400));
 
             $block->$field = $data;
             $block->params = helper::jsonEncode($block->params);
+            $block->account_id = $this->app->user->accountId;
             $this->dao->replace(TABLE_BLOCK)->data($block)->exec();
-            if(dao::isError()) $this->send(array('result' => 'fail', 'code' => 500));
+            if (dao::isError()) $this->send(array('result' => 'fail', 'code' => 500));
             $this->send(array('result' => 'success'));
-        }
-        else
-        {
+        } else {
             $this->send(array('result' => 'fail', 'code' => 404));
         }
     }
 
 
     /**
-     * Delete block 
-     * 
-     * @param  int    $index 
-     * @param  string $sys 
-     * @param  string $type 
+     * Delete block
+     *
+     * @param  int $index
+     * @param  string $sys
+     * @param  string $type
      * @access public
      * @return void
      */
     public function delete($index, $app = 'sys', $type = 'delete')
     {
-        if($type == 'hidden')
-        {
-            $this->dao->update(TABLE_BLOCK)->set('hidden')->eq(1)->where('`order`')->eq($index)->andWhere('account')->eq($this->app->user->account)->andWhere('app')->eq($app)->exec();
+        if ($type == 'hidden') {
+            $this->dao->update(TABLE_BLOCK)->set('hidden')->eq(1)->where('`order`')->eq($index)->andWhere('account')->eq($this->app->user->account) ->andWhere('account_id')->eq($this->app->user->accountId)->andWhere('app')->eq($app)->exec();
+        } else {
+            $this->dao->delete()->from(TABLE_BLOCK)->where('`order`')->eq($index)->andWhere('account')->eq($this->app->user->account) ->andWhere('account_id')->eq($this->app->user->accountId)->andWhere('app')->eq($app)->exec();
         }
-        else
-        {
-            $this->dao->delete()->from(TABLE_BLOCK)->where('`order`')->eq($index)->andWhere('account')->eq($this->app->user->account)->andWhere('app')->eq($app)->exec();
-        }
-        if(dao::isError()) $this->send(array('result' => 'fail', 'message' => dao::getError()));
+        if (dao::isError()) $this->send(array('result' => 'fail', 'message' => dao::getError()));
         $this->send(array('result' => 'success'));
     }
 
     /**
      * Display dashboard for app.
-     * 
-     * @param  string    $appName 
+     *
+     * @param  string $appName
      * @access public
      * @return void
      */
@@ -211,51 +197,44 @@ class block extends control
         $inited = empty($this->config->personal->common->blockInited) ? '' : $this->config->personal->common->blockInited;
 
         /* Init block when vist index first. */
-        if(empty($blocks) and !($inited and $inited->app == $appName and $inited->value))
-        {
-            if($this->block->initBlock($appName)) die(js::reload());
+        if (empty($blocks) and !($inited and $inited->app == $appName and $inited->value)) {
+            if ($this->block->initBlock($appName)) die(js::reload());
         }
 
-        foreach($blocks as $key => $block)
-        {
+        foreach ($blocks as $key => $block) {
             $block->params = json_decode($block->params);
 
-            if(empty($block->params)) $block->params = new stdclass();
+            if (empty($block->params)) $block->params = new stdclass();
             $block->params->account = $this->app->user->account;
-            $block->params->uid     = $this->app->user->id;
+            $block->params->uid = $this->app->user->id;
 
-            $query            = array();
-            $query['mode']    = 'getblockdata';
+            $query = array();
+            $query['mode'] = 'getblockdata';
             $query['blockid'] = $block->block;
-            $query['hash']    = '';
-            $query['lang']    = $this->app->getClientLang();
-            $query['sso']     = '';
-            $query['app']     = $appName;
-            if(isset($block->params)) $query['param'] = base64_encode(json_encode($block->params));
+            $query['hash'] = '';
+            $query['lang'] = $this->app->getClientLang();
+            $query['sso'] = '';
+            $query['app'] = $appName;
+            if (isset($block->params)) $query['param'] = base64_encode(json_encode($block->params));
 
             $query = http_build_query($query);
-            $sign  = $this->config->requestType == 'PATH_INFO' ? '?' : '&';
+            $sign = $this->config->requestType == 'PATH_INFO' ? '?' : '&';
 
             $block->blockLink = $this->createLink($appName . '.block', 'index') . $sign . $query;
-            
+
             $moduleName = $block->block;
-            if((isset($block->params->type) or isset($block->params->status)) and is_array($this->lang->block->moreLinkList->{$moduleName}))
-            {
+            if ((isset($block->params->type) or isset($block->params->status)) and is_array($this->lang->block->moreLinkList->{$moduleName})) {
                 $type = isset($block->params->type) ? $block->params->type : $block->params->status;
-                if(isset($this->lang->block->moreLinkList->{$moduleName}[$type]))
-                {
+                if (isset($this->lang->block->moreLinkList->{$moduleName}[$type])) {
                     list($label, $app, $module, $method, $vars) = explode('|', $this->lang->block->moreLinkList->{$moduleName}[$type]);
                     $block->moreLink = $this->createLink($app . '.' . $module, $method, $vars);
-                    $block->appid    = $app == 'sys' ? 'dashboard' : $app;
+                    $block->appid = $app == 'sys' ? 'dashboard' : $app;
                 }
-            }
-            else
-            {
-                if(isset($this->lang->block->moreLinkList->{$moduleName}))
-                {
+            } else {
+                if (isset($this->lang->block->moreLinkList->{$moduleName})) {
                     list($label, $app, $module, $method, $vars) = explode('|', $this->lang->block->moreLinkList->{$moduleName});
                     $block->moreLink = $this->createLink($app . '.' . $module, $method, $vars);
-                    $block->appid    = $app == 'sys' ? 'dashboard' : $app;
+                    $block->appid = $app == 'sys' ? 'dashboard' : $app;
                 }
             }
         }
@@ -266,27 +245,27 @@ class block extends control
 
     /**
      * Entries block
-     * 
+     *
      * @access public
      * @return void
      */
     public function entries()
     {
         $entries = $this->loadModel('entry')->getEntries($this->app->getViewType() == 'mhtml' ? 'mobile' : 'custom');
-        $this->view->entries   = $entries;
+        $this->view->entries = $entries;
         $this->display();
     }
 
     /**
      * latest dynamic.
-     * 
+     *
      * @access public
      * @return void
      */
     public function dynamic()
     {
         $this->view->actions = $this->loadModel('action')->getDynamic('all', 'today');
-        $this->view->users   = $this->loadModel('user')->getPairs();
+        $this->view->users = $this->loadModel('user')->getPairs();
         $this->display();
     }
 }

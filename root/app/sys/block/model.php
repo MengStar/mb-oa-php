@@ -1,4 +1,5 @@
 <?php
+
 /**
  * The model file of block module of RanZhi.
  *
@@ -12,12 +13,12 @@
 class blockModel extends model
 {
     /**
-     * Save params 
-     * 
-     * @param  int    $index 
-     * @param  string $type 
-     * @param  string $appName 
-     * @param  int    $blockID 
+     * Save params
+     *
+     * @param  int $index
+     * @param  string $type
+     * @param  string $appName
+     * @param  int $blockID
      * @access public
      * @return void
      */
@@ -36,64 +37,61 @@ class blockModel extends model
             ->setDefault('params', array())
             ->get();
 
-        $block = $this->dao->select('*')->from(TABLE_BLOCK)->where('account')->eq($data->account)->andWhere('app')->eq($data->app)->andWhere('`order`')->eq($data->order)->fetch();
-        if($block) $data->height = $block->height;
+        $block = $this->dao->select('*')->from(TABLE_BLOCK)->where('account')->eq($data->account)->andWhere('app')->eq($data->app)->andWhere('account_id')->eq($this->app->user->accountId)->andWhere('`order`')->eq($data->order)->fetch();
+        if ($block) $data->height = $block->height;
 
-        if($type != 'system') $data->source = '';
-        if($type == 'html')
-        {
+        if ($type != 'system') $data->source = '';
+        if ($type == 'html') {
             $data = $this->loadModel('file')->processImgURL($data, 'html', $this->post->uid);
             $data->params['html'] = $data->html;
             unset($data->html);
         }
         $data->params = helper::jsonEncode($data->params);
+        $data->account_id = $this->app->user->accountId;
 
         $this->dao->replace(TABLE_BLOCK)->data($data, 'uid')->exec();
     }
 
     /**
      * Get content for entry block.
-     * 
-     * @param  object    $block 
+     *
+     * @param  object $block
      * @access public
      * @return string
      */
     public function getEntry($block = null)
     {
-        if(empty($block)) return false;
+        if (empty($block)) return false;
         $entry = $this->loadModel('entry')->getByCode($block->source);
 
-        if(empty($block->params)) $block->params = new stdclass();
+        if (empty($block->params)) $block->params = new stdclass();
 
         $block->params->account = $this->app->user->account;
-        $block->params->uid     = $this->app->user->id;
+        $block->params->uid = $this->app->user->id;
         $params = base64_encode(json_encode($block->params));
 
-        $query['mode']    = 'getblockdata';
+        $query['mode'] = 'getblockdata';
         $query['blockid'] = $block->block;
-        $query['hash']    = $entry->key;
-        $query['entry']   = $entry->id;
-        $query['app']     = 'sys';
-        $query['lang']    = str_replace('-', '_', $this->app->getClientLang());
-        $query['sso']     = base64_encode(commonModel::getSysURL() . helper::createLink('entry', 'visit', "entry=$entry->id"));
-        $query['user']    = $this->app->user->account;
-        if(isset($params)) $query['param'] = $params;
+        $query['hash'] = $entry->key;
+        $query['entry'] = $entry->id;
+        $query['app'] = 'sys';
+        $query['lang'] = str_replace('-', '_', $this->app->getClientLang());
+        $query['sso'] = base64_encode(commonModel::getSysURL() . helper::createLink('entry', 'visit', "entry=$entry->id"));
+        $query['user'] = $this->app->user->account;
+        if (isset($params)) $query['param'] = $params;
 
-        $query     = http_build_query($query);
+        $query = http_build_query($query);
         $parsedUrl = parse_url($entry->block);
         $parsedUrl['query'] = empty($parsedUrl['query']) ? $query : $parsedUrl['query'] . "&" . $query;
 
         $link = '';
-        if(!isset($parsedUrl['scheme'])) 
-        {
-            $link  = commonModel::getSysURL() . $parsedUrl['path'];
+        if (!isset($parsedUrl['scheme'])) {
+            $link = commonModel::getSysURL() . $parsedUrl['path'];
             $link .= '?' . $parsedUrl['query'];
-        }
-        else
-        {
+        } else {
             $link .= $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
-            if(isset($parsedUrl['port'])) $link .= ':' . $parsedUrl['port']; 
-            if(isset($parsedUrl['path'])) $link .= $parsedUrl['path']; 
+            if (isset($parsedUrl['port'])) $link .= ':' . $parsedUrl['port'];
+            if (isset($parsedUrl['path'])) $link .= $parsedUrl['path'];
             $link .= '?' . $parsedUrl['query'];
         }
 
@@ -103,15 +101,15 @@ class blockModel extends model
     }
 
     /**
-     * Get content when type is rss 
-     * 
-     * @param  object    $block 
+     * Get content when type is rss
+     *
+     * @param  object $block
      * @access public
      * @return string
      */
     public function getRss($block = null)
     {
-        if(empty($block)) return false;
+        if (empty($block)) return false;
         $http = $this->app->loadClass('http');
 
         $xml = $http->get(htmlspecialchars_decode($block->params->link));
@@ -121,34 +119,28 @@ class blockModel extends model
         xml_parser_free($xpc);
 
         $channelTags = array();
-        $itemTags    = array();
-        $inItem      = false;
-        foreach($values as $value)
-        {
+        $itemTags = array();
+        $inItem = false;
+        foreach ($values as $value) {
             $tag = strtolower($value['tag']);
-            if($value['tag'] == 'ITEM' and $value['type'] == 'open')  $inItem = true;
-            if($value['tag'] == 'ITEM' and $value['type'] == 'close') $inItem = false;
+            if ($value['tag'] == 'ITEM' and $value['type'] == 'open') $inItem = true;
+            if ($value['tag'] == 'ITEM' and $value['type'] == 'close') $inItem = false;
 
             /* The level of text node is 3 in channel. */
-            if(!$inItem and $value['type'] == 'complete' and $value['level'] == 3) $channelTags[$tag] = isset($value['value']) ? $value['value'] : '';
+            if (!$inItem and $value['type'] == 'complete' and $value['level'] == 3) $channelTags[$tag] = isset($value['value']) ? $value['value'] : '';
             /* The level of text node is 4 in item. */
-            if($inItem  and $value['type'] == 'complete' and $value['level'] == 4) $itemTags[$tag][]  = isset($value['value']) ? $value['value'] : '';
+            if ($inItem and $value['type'] == 'complete' and $value['level'] == 4) $itemTags[$tag][] = isset($value['value']) ? $value['value'] : '';
         }
 
         $maxNum = $block->params->num == 0 ? count(current($itemTags)) : $block->params->num;
-        $html   = "<div class='list-group'>";
-        for($i = 0; $i < $maxNum; $i++)
-        {
+        $html = "<div class='list-group'>";
+        for ($i = 0; $i < $maxNum; $i++) {
             $title = '';
-            foreach(array_keys($itemTags) as $tag)
-            {
-                if($tag == 'title')
-                {
+            foreach (array_keys($itemTags) as $tag) {
+                if ($tag == 'title') {
                     $title = $itemTags[$tag][$i];
-                }
-                elseif($tag == 'pubdate')
-                {
-                    $time = date('n-j H:s',strtotime($itemTags[$tag][$i]));
+                } elseif ($tag == 'pubdate') {
+                    $time = date('n-j H:s', strtotime($itemTags[$tag][$i]));
                     $html .= "<a class='list-group-item' target='_blank' href='{$itemTags['link'][$i]}'><small class='text-muted pull-right'>{$time}</small><h5 class='list-group-item-heading small text-ellipsis'>{$title}</h5></a>";
                 }
             }
@@ -159,8 +151,8 @@ class blockModel extends model
 
     /**
      * Get block by ID.
-     * 
-     * @param  int    $blockID 
+     *
+     * @param  int $blockID
      * @access public
      * @return object
      */
@@ -168,19 +160,20 @@ class blockModel extends model
     {
         $block = $this->dao->select('*')->from(TABLE_BLOCK)
             ->where('id')->eq($blockID)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->fetch();
-        if(empty($block)) return false;
+        if (empty($block)) return false;
 
         $block->params = json_decode($block->params);
-        if(empty($block->params)) $block->params = new stdclass();
-        if($block->block == 'html') $block->params = $this->loadModel('file')->replaceImgURL($block->params, 'html');
+        if (empty($block->params)) $block->params = new stdclass();
+        if ($block->block == 'html') $block->params = $this->loadModel('file')->replaceImgURL($block->params, 'html');
         return $block;
     }
 
     /**
      * Get saved block config.
-     * 
-     * @param  int    $index 
+     *
+     * @param  int $index
      * @param  string $appName
      * @access public
      * @return object
@@ -190,20 +183,21 @@ class blockModel extends model
         $block = $this->dao->select('*')->from(TABLE_BLOCK)
             ->where('`order`')->eq($index)
             ->andWhere('account')->eq($this->app->user->account)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('app')->eq($appName)
             ->fetch();
-        if(empty($block)) return false;
+        if (empty($block)) return false;
 
         $block->params = json_decode($block->params);
-        if(empty($block->params)) $block->params = new stdclass();
-        if($block->block == 'html') $block->params = $this->loadModel('file')->replaceImgURL($block->params, 'html');
+        if (empty($block->params)) $block->params = new stdclass();
+        if ($block->block == 'html') $block->params = $this->loadModel('file')->replaceImgURL($block->params, 'html');
         return $block;
     }
 
     /**
      * Get last key.
-     * 
-     * @param  string $appName 
+     *
+     * @param  string $appName
      * @access public
      * @return int
      */
@@ -212,6 +206,7 @@ class blockModel extends model
         $index = $this->dao->select('`order`')->from(TABLE_BLOCK)
             ->where('app')->eq($appName)
             ->andWhere('account')->eq($this->app->user->account)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->orderBy('order desc')
             ->limit(1)
             ->fetch('order');
@@ -220,50 +215,50 @@ class blockModel extends model
 
     /**
      * Get block list for account.
-     * 
-     * @param  string $appName 
+     *
+     * @param  string $appName
      * @access public
      * @return void
      */
     public function getBlockList($appName = 'sys')
     {
         $blocks = $this->dao->select('*')->from(TABLE_BLOCK)->where('account')->eq($this->app->user->account)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('app')->eq($appName)
             ->andWhere('hidden')->eq(0)
             ->orderBy('`order`')
             ->fetchAll('order');
 
-        foreach($blocks as $key => $block)
-        {
+        foreach ($blocks as $key => $block) {
             $openBlocks = $this->app->clientDevice == 'mobile' ? 'html,allEntries,dynamic' : 'html,allEntries,dynamic,attend';
-            if(strpos($openBlocks, $block->block) !== false) continue;
+            if (strpos($openBlocks, $block->block) !== false) continue;
 
             $entry = $this->loadModel('entry')->getByCode($block->source);
-            if($entry && !$entry->buildin) continue;
+            if ($entry && !$entry->buildin) continue;
 
             $module = $block->block;
             $method = 'browse';
-            if(strpos('blog, project', $block->block) !== false) $method = 'index';
-            if($block->block == 'attend') $method = 'personal';
-            if($block->block == 'thread')
-            {
+            if (strpos('blog, project', $block->block) !== false) $method = 'index';
+            if ($block->block == 'attend') $method = 'personal';
+            if ($block->block == 'thread') {
                 $module = 'forum';
                 $method = 'board';
             }
-            if(!commonModel::hasPriv($module, $method)) unset($blocks[$key]);
+            if (!commonModel::hasPriv($module, $method)) unset($blocks[$key]);
         }
         return $blocks;
     }
 
     /**
      * Get hidden blocks
-     * 
+     *
      * @access public
      * @return array
      */
     public function getHiddenBlocks()
     {
         return $this->dao->select('*')->from(TABLE_BLOCK)->where('account')->eq($this->app->user->account)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->andWhere('app')->eq('sys')
             ->andWhere('hidden')->eq(1)
             ->orderBy('`order`')
@@ -271,28 +266,27 @@ class blockModel extends model
     }
 
     /**
-     * Init block when account use first. 
-     * 
-     * @param  string    $appName 
+     * Init block when account use first.
+     *
+     * @param  string $appName
      * @access public
      * @return bool
      */
     public function initBlock($appName = 'sys')
     {
         $this->app->loadLang('block', 'sys');
-        $blocks  = $this->lang->block->default[$appName];
+        $blocks = $this->lang->block->default[$appName];
         $account = $this->app->user->account;
 
         /* Mark this app has init. */
         $this->loadModel('setting')->setItem("$account.$appName.common.blockInited", true);
-        foreach($blocks as $index => $block)
-        {
-            $block['order']   = $index;
-            $block['app']     = $appName;
+        foreach ($blocks as $index => $block) {
+            $block['order'] = $index;
+            $block['app'] = $appName;
             $block['account'] = $account;
-            $block['params']  = isset($block['params']) ? helper::jsonEncode($block['params']) : '';
-            if(!isset($block['source'])) $block['source'] = $appName;
-
+            $block['params'] = isset($block['params']) ? helper::jsonEncode($block['params']) : '';
+            if (!isset($block['source'])) $block['source'] = $appName;
+            $block->account_id = $this->app->user->accountId;
             $this->dao->replace(TABLE_BLOCK)->data($block)->exec();
         }
 
