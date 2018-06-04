@@ -41,6 +41,7 @@ class userModel extends model
 
         return $this->dao->select('*')->from(TABLE_USER)
             ->where(1)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF($deptList)->andWhere('dept')->in($deptList)->fi()
             ->beginIF($accountList)->andWhere('account')->in($accountList)->fi()
             ->beginIF($mode != 'all')->andWhere('deleted')->eq('0')->fi()
@@ -75,6 +76,7 @@ class userModel extends model
     {
         $users = $this->dao->select('account, realname')->from(TABLE_USER) 
             ->where(1)
+//            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF(strpos($params, 'nodeleted') !== false)->andWhere('deleted')->eq('0')->fi()
             ->beginIF(strpos($params, 'noforbidden') !== false)
             ->andWhere('locked', true)->eq('0000-00-00 00:00:00')
@@ -240,6 +242,7 @@ class userModel extends model
             ->remove('admin, ip')
             ->get();
         $user->password = $this->createPassword($this->post->password1, $user->account); 
+        $user->account_id = $this->app->user->accountId;
 
         $this->dao->insert(TABLE_USER)
             ->data($user, $skip = 'password1,password2')
