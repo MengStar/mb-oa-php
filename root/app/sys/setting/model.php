@@ -14,10 +14,10 @@
 class settingModel extends model
 {
     //-------------------------------- methods for get, set and delete setting items. ----------------------------//
-    
+
     /**
      * Get value of an item.
-     * 
+     *
      * @param  string   $paramString    see parseItemParam();
      * @param  string   $type
      * @access public
@@ -30,7 +30,7 @@ class settingModel extends model
 
     /**
      * Get some items.
-     * 
+     *
      * @param  string   $paramString    see parseItemParam();
      * @param  string   $type
      * @access public
@@ -42,10 +42,10 @@ class settingModel extends model
     }
 
     /**
-     * Set value of an item. 
-     * 
-     * @param  string      $path     system.sys.common.global.sn or system.sys.common.sn 
-     * @param  string      $value 
+     * Set value of an item.
+     *
+     * @param  string      $path     system.sys.common.global.sn or system.sys.common.sn
+     * @param  string      $value
      * @param  string      $type
      * @access public
      * @return void
@@ -83,7 +83,7 @@ class settingModel extends model
         $item->section = $section;
         $item->key     = $key;
         $item->value   = $value;
-
+        $item->account_id = $this->app->user->accountId;
         $table = $type == 'config' ? TABLE_CONFIG : TABLE_LANG;
         $this->dao->replace($table)->data($item)->exec();
         return $this->dao->lastInsertID();
@@ -91,12 +91,12 @@ class settingModel extends model
 
     /**
      * Batch set items, the example:
-     * 
+     *
      * $path = 'system.mail';
      * $items->turnon = true;
      * $items->smtp->host = 'localhost';
      *
-     * @param  string         $path   like system.sys.mail 
+     * @param  string         $path   like system.sys.mail
      * @param  array|object   $items  the items array or object, can be mixed by one level or two levels.
      * @param  string         $type
      * @access public
@@ -126,7 +126,7 @@ class settingModel extends model
 
     /**
      * Delete items.
-     * 
+     *
      * @param  string   $paramString    see parseItemParam();
      * @param  string   $type
      * @access public
@@ -139,7 +139,7 @@ class settingModel extends model
 
     /**
      * Parse the param string for select or delete items.
-     * 
+     *
      * @param  string    $paramString     owner=xxx&app=sys&module=common&key=sn and so on.
      * @param  string    $type
      * @access public
@@ -148,7 +148,7 @@ class settingModel extends model
     public function parseItemParam($paramString, $type = 'config')
     {
         /* Parse the param string into array. */
-        parse_str($paramString, $params); 
+        parse_str($paramString, $params);
 
         /* Init fields not set in the param string. */
         $fields = 'owner,lang,app,module,section,key,system';
@@ -160,7 +160,7 @@ class settingModel extends model
 
     /**
      * Create a DAO object to select or delete one or more records.
-     * 
+     *
      * @param  array  $params     the params parsed by parseItemParam() method.
      * @param  string $method     select|delete.
      * @param  string $type
@@ -171,6 +171,7 @@ class settingModel extends model
     {
         $table = $type == 'config' ? TABLE_CONFIG : TABLE_LANG;
         return $this->dao->$method('*')->from($table)->where('1 = 1')
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF($type == 'config' and $params['owner'])->andWhere('owner')->in($params['owner'])->fi()
             ->beginIF($type == 'lang' and $params['lang'])->andWhere('lang')->in($params['lang'])->fi()
             ->beginIF($params['app'])->andWhere('app')->in($params['app'])->fi()
@@ -183,7 +184,7 @@ class settingModel extends model
     /**
      * Get config of system and one user.
      *
-     * @param  string $account 
+     * @param  string $account
      * @access public
      * @return array
      */
@@ -194,6 +195,7 @@ class settingModel extends model
 
         $records = $this->dao->select('*')->from(TABLE_CONFIG)
             ->where('owner')->in($owner)
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->orderBy('id')
             ->fetchAll('id');
 
@@ -222,10 +224,10 @@ class settingModel extends model
     }
 
     //-------------------------------- methods for version and sn. ----------------------------//
-   
+
     /**
      * Get the version of current ranzhi.
-     * 
+     *
      * Since the version field not saved in db. So if empty, return 1.1.
      *
      * @access public
@@ -238,9 +240,9 @@ class settingModel extends model
     }
 
     /**
-     * Update version 
-     * 
-     * @param  string    $version 
+     * Update version
+     *
+     * @param  string    $version
      * @access public
      * @return void
      */
@@ -251,13 +253,13 @@ class settingModel extends model
 
     /**
      * Get all lang.
-     * 
+     *
      * @access public
      * @return array
      */
     public function getAllLang()
     {
-        $allCustomLang = $this->dao->select('*')->from(TABLE_LANG)->orderBy('app,lang,id')->fetchGroup('app', 'id');
+        $allCustomLang = $this->dao->select('*')->from(TABLE_LANG)->where('account_id')->eq($this->app->user->accountId)->orderBy('app,lang,id')->fetchGroup('app', 'id');
 
         $currentLang   = $this->app->getClientLang();
         $processedLang = array();
@@ -275,7 +277,7 @@ class settingModel extends model
 
     /**
      * Set the sn of current ranzhi.
-     * 
+     *
      * @access public
      * @return void
      */
@@ -287,8 +289,8 @@ class settingModel extends model
 
     /**
      * Compute a SN. Use the server ip, and server software string as seed, and an rand number, two micro time
-     * 
-     * Note: this sn just to unique this ranzhi. No any private info. 
+     *
+     * Note: this sn just to unique this ranzhi. No any private info.
      *
      * @access public
      * @return string
