@@ -9,7 +9,7 @@ class xuanxuan extends router
      * @access public
      */
     public $params = array();
-
+    public $accountId = -1;
     /**
      * 构造方法, 设置路径，类，超级变量等。注意：
      * 1.应该使用createApp()方法实例化router类；
@@ -34,6 +34,10 @@ class xuanxuan extends router
         $this->setClientLang('zh-cn');
     }
 
+    public function setAccountId($accountId)
+    {
+        $this->accountId=$accountId;
+    }
     /**
      * Set view type.
      *
