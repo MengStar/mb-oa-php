@@ -22,6 +22,7 @@ class groupModel extends model
     public function create()
     {
         $group = fixer::input('post')->specialChars('name, desc')->get();
+        $group->account_id = $this->app->user->accountId;
         return $this->dao->insert(TABLE_GROUP)->data($group)->batchCheck($this->config->group->create->requiredFields, 'notempty')->exec();
     }
 
@@ -48,6 +49,7 @@ class groupModel extends model
     public function copy($groupID)
     {
         $group = fixer::input('post')->specialChars('name, desc')->remove('options')->get();
+        $group->account_id = $this->app->user->accountId;
         $this->dao->insert(TABLE_GROUP)->data($group)->check('name', 'unique')->check('name', 'notempty')->exec();
         if($this->post->options == false) return;
         if(!dao::isError())
@@ -69,7 +71,7 @@ class groupModel extends model
      */
     public function copyPriv($fromGroup, $toGroup)
     {
-        $privs = $this->dao->findByGroup($fromGroup)->from(TABLE_GROUPPRIV)->fetchAll();
+        $privs = $this->dao->findByGroup($fromGroup)->from(TABLE_GROUPPRIV)->andWhere('account_id')->eq($this->app->user->accountId)->fetchAll();
         foreach($privs as $priv)
         {
             $priv->group = $toGroup;
@@ -87,7 +89,7 @@ class groupModel extends model
      */
     public function copyUser($fromGroup, $toGroup)
     {
-        $users = $this->dao->findByGroup($fromGroup)->from(TABLE_USERGROUP)->fetchAll();
+        $users = $this->dao->findByGroup($fromGroup)->from(TABLE_USERGROUP)->andWhere('account_id')->eq($this->app->user->accountId)->fetchAll();
         foreach($users as $user)
         {
             $user->group = $toGroup;
@@ -103,7 +105,7 @@ class groupModel extends model
      */
     public function getList()
     {
-        return $this->dao->select('*')->from(TABLE_GROUP)->orderBy('id')->fetchAll();
+        return $this->dao->select('*')->from(TABLE_GROUP)->where('account_id')->eq($this->app->user->accountId)->orderBy('id')->fetchAll();
     }
 
     /**
@@ -114,7 +116,7 @@ class groupModel extends model
      */
     public function getPairs()
     {
-        return $this->dao->select('id, name')->from(TABLE_GROUP)->fetchPairs();
+        return $this->dao->select('id, name')->from(TABLE_GROUP)->where('account_id')->eq($this->app->user->accountId)->fetchPairs();
     }
 
     /**
@@ -126,7 +128,7 @@ class groupModel extends model
      */
     public function getByID($groupID)
     {
-        return $this->dao->findById($groupID)->from(TABLE_GROUP)->fetch();
+        return $this->dao->findById($groupID)->from(TABLE_GROUP)->andWhere('account_id')->eq($this->app->user->accountId)->fetch();
     }
 
     /**
@@ -142,6 +144,8 @@ class groupModel extends model
             ->leftJoin(TABLE_GROUP)->alias('t2')
             ->on('t1.group = t2.id')
             ->where('t1.account')->eq($account)
+            ->andWhere('t1.account_id')->eq($this->app->user->accountId)
+            ->andWhere('t2.account_id')->eq($this->app->user->accountId)
             ->fetchAll('id');
     }
 
@@ -155,7 +159,7 @@ class groupModel extends model
     public function getPrivs($groupID)
     {
         $privs = array();
-        $stmt  = $this->dao->select('module, method')->from(TABLE_GROUPPRIV)->where('`group`')->eq($groupID)->orderBy('module')->query();
+        $stmt  = $this->dao->select('module, method')->from(TABLE_GROUPPRIV)->where('`group`')->eq($groupID)->andWhere('account_id')->eq($this->app->user->accountId)->orderBy('module')->query();
         while($priv = $stmt->fetch()) $privs[$priv->module][$priv->method] = $priv->method;
         return $privs;
     }
@@ -174,6 +178,8 @@ class groupModel extends model
             ->leftJoin(TABLE_USER)->alias('t2')->on('t1.account = t2.account')
             ->where('`group`')->eq((int)$groupID)
             ->andWhere('t2.deleted')->eq(0)
+            ->andWhere('t1.account_id')->eq($this->app->user->accountId)
+            ->andWhere('t2.account_id')->eq($this->app->user->accountId)
             ->orderBy('t2.account')
             ->fetchPairs();
     }
@@ -188,9 +194,9 @@ class groupModel extends model
      */
     public function delete($groupID, $null = null)
     {
-        $this->dao->delete()->from(TABLE_GROUP)->where('id')->eq($groupID)->exec();
-        $this->dao->delete()->from(TABLE_USERGROUP)->where('`group`')->eq($groupID)->exec();
-        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`group`')->eq($groupID)->exec();
+        $this->dao->delete()->from(TABLE_GROUP)->where('id')->eq($groupID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+        $this->dao->delete()->from(TABLE_USERGROUP)->where('`group`')->eq($groupID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`group`')->eq($groupID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
     }
 
     /**
@@ -213,7 +219,7 @@ class groupModel extends model
                 {
                     /* Delete no checked priv*/
                     list($module, $method) = explode('-', $noChecked);
-                    $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`group`')->eq($groupID)->andWhere('module')->eq($module)->andWhere('method')->eq($method)->exec();
+                    $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`group`')->eq($groupID)->andWhere('module')->eq($module)->andWhere('method')->eq($method)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
                 }
             }
 
@@ -228,6 +234,7 @@ class groupModel extends model
                         $data->group  = $groupID;
                         $data->module = $moduleName;
                         $data->method = $actionName;
+                        $data->account_id = $this->app->user->accountId;
                         $this->dao->replace(TABLE_GROUPPRIV)->data($data)->exec();
                     }
                 }
@@ -238,6 +245,7 @@ class groupModel extends model
         /* Delete old. */
         $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`group`')->eq($groupID)
             ->andWhere('module')->notin('apppriv,tradebrowse')
+            ->andWhere('account_id')->eq($this->app->user->accountId)
             ->beginIF($menu)->andWhere('module')->in($this->getMenuModules($menu))->fi()
             ->exec();
 
@@ -252,6 +260,7 @@ class groupModel extends model
                     $data->group  = $groupID;
                     $data->module = $moduleName;
                     $data->method = $actionName;
+                    $data->account_id = $this->app->user->accountId;
                     $this->dao->replace(TABLE_GROUPPRIV)->data($data)->exec();
                 }
             }
@@ -277,6 +286,7 @@ class groupModel extends model
                 $data->group  = $group;
                 $data->module = $this->post->module;
                 $data->method = $action;
+                $data->account_id = $this->app->user->accountId;
                 $this->dao->replace(TABLE_GROUPPRIV)->data($data)->exec();
             }
         }
@@ -293,7 +303,7 @@ class groupModel extends model
     public function updateUser($groupID)
     {
         /* Delete old. */
-        $this->dao->delete()->from(TABLE_USERGROUP)->where('`group`')->eq($groupID)->exec();
+        $this->dao->delete()->from(TABLE_USERGROUP)->where('`group`')->eq($groupID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
 
         /* Insert new. */
         if($this->post->members == false) return;
@@ -302,6 +312,7 @@ class groupModel extends model
             $data          = new stdclass();
             $data->account = $account;
             $data->group   = $groupID;
+            $data->account_id = $this->app->user->accountId;
             $this->dao->insert(TABLE_USERGROUP)->data($data)->exec();
         }
         return !dao::isError();
@@ -405,12 +416,13 @@ class groupModel extends model
     public function updateAppPrivByGroup($groupID, $apps)
     {
         /* Delete old priv. */
-        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`module`')->eq('apppriv')->andWhere('`group`')->eq($groupID)->exec();
+        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`module`')->eq('apppriv')->andWhere('`group`')->eq($groupID)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
 
         if(empty($apps)) return true;
         $priv = new stdclass();
         $priv->group = $groupID;
         $priv->module = 'apppriv';
+        $priv->account_id=$this->app->user->accountId;
         foreach($apps as $app)
         {
             $priv->method = $app;
@@ -430,12 +442,13 @@ class groupModel extends model
     public function updateAppPrivByApp($appCode, $groups)
     {
         /* Delete old priv. */
-        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`module`')->eq('apppriv')->andWhere('`method`')->eq($appCode)->exec();
+        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`module`')->eq('apppriv')->andWhere('`method`')->eq($appCode)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
 
         if(empty($groups)) return true;
         $priv = new stdclass();
         $priv->module = 'apppriv';
         $priv->method = $appCode;
+        $priv->account_id=$this->app->user->accountId;
         foreach($groups as $group)
         {
             $priv->group = $group;
@@ -454,12 +467,13 @@ class groupModel extends model
     public function updateTradePriv($groups)
     {
         /* Delete old priv. */
-        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`module`')->eq('tradebrowse')->andWhere('`method`')->eq('out')->exec();
+        $this->dao->delete()->from(TABLE_GROUPPRIV)->where('`module`')->eq('tradebrowse')->andWhere('`method`')->eq('out')->andWhere('account_id')->eq($this->app->user->accountId)->exec();
 
         if(empty($groups)) return true;
         $priv = new stdclass();
         $priv->module = 'tradebrowse';
         $priv->method = 'out';
+        $priv->account_id=$this->app->user->accountId;
         foreach($groups as $group)
         {
             $priv->group = $group;
@@ -477,7 +491,7 @@ class groupModel extends model
      */
     public function getAppPriv($appCode)
     {
-        return $this->dao->select('*')->from(TABLE_GROUPPRIV)->where('`module`')->eq('apppriv')->andWhere('`method`')->eq($appCode)->fetchAll('group');
+        return $this->dao->select('*')->from(TABLE_GROUPPRIV)->where('`module`')->eq('apppriv')->andWhere('`method`')->eq($appCode)->andWhere('account_id')->eq($this->app->user->accountId)->fetchAll('group');
     }
 
     /**
@@ -488,7 +502,7 @@ class groupModel extends model
      */
     public function getTradePriv()
     {
-        return $this->dao->select('*')->from(TABLE_GROUPPRIV)->where('`module`')->eq('tradebrowse')->andWhere('`method`')->eq('out')->fetchAll('group');
+        return $this->dao->select('*')->from(TABLE_GROUPPRIV)->where('`module`')->eq('tradebrowse')->andWhere('`method`')->eq('out')->andWhere('account_id')->eq($this->app->user->accountId)->fetchAll('group');
     }
 
     /**
