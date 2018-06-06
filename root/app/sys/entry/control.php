@@ -19,8 +19,11 @@ class entry extends control
      */
     public function admin($category = 0)
     {
+        $accountId = $this->app->user->accountId;
+        if(!$accountId && $this->app->userID) $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $entries    = $this->entry->getEntries($type = 'custom', $category);
-        $categories = $this->dao->select('id, name')->from(TABLE_CATEGORY)->where('type')->eq('entry')->andWhere('account_id')->eq($this->app->user->accountId)->orderBy('`order`')->fetchPairs();
+        $categories = $this->dao->select('id, name')->from(TABLE_CATEGORY)->where('type')->eq('entry')->andWhere('account_id')->eq($accountId)->orderBy('`order`')->fetchPairs();
         $tmpEntries = array();
         $maxOrder   = 0;
         foreach($entries as $key => $entry)
@@ -313,11 +316,14 @@ class entry extends control
             }
             usort($entries, 'commonModel::sortEntryByOrder');
 
+//            $accountId = $this->app->user->accountId;
+//            if(!$accountId && $this->app->userID) $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
             /* Update order. */
             $order = 10;
             foreach($entries as $entry)
             {
-                $this->dao->update(TABLE_ENTRY)->set('`order`')->eq($order)->where('id')->eq($entry->id)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+                $this->dao->update(TABLE_ENTRY)->set('`order`')->eq($order)->where('id')->eq($entry->id)->exec();
                 $order += 10;
             }
             if(dao::isError()) $this->send(array('result' => 'fail', 'message' => dao::getError()));
@@ -536,6 +542,9 @@ class entry extends control
     {
         if($_POST)
         {
+//            $accountId = $this->app->user->accountId;
+//            if(!$accountId && $this->app->userID) $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
             $orders = $_POST;
             $allEntries = isset($this->config->personal->common->customApp) ? json_decode($this->config->personal->common->customApp->value) : new stdclass();
             /* Merge entries settings. */
@@ -548,7 +557,7 @@ class entry extends control
                 }
                 $allEntries->{$id}->order = $order * 10;
 
-                $this->dao->update(TABLE_ENTRY)->set('`order`')->eq($order * 10)->where('`id`')->eq($id)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+                $this->dao->update(TABLE_ENTRY)->set('`order`')->eq($order * 10)->where('`id`')->eq($id)->exec();
             }
             $this->loadModel('setting')->setItem("{$this->app->user->account}.sys.common.customApp", json_encode($allEntries));
             if(dao::isError()) $this->send(array('result' => 'fail', 'message' => dao::getError()));
@@ -571,7 +580,9 @@ class entry extends control
 
             if($this->app->user->admin == 'super')
             {
-                $this->dao->update(TABLE_ENTRY)->set('visible')->eq($visible)->where('id')->eq($id)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+//                $accountId = $this->app->user->accountId;
+//                if(!$accountId && $this->app->userID) $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+                $this->dao->update(TABLE_ENTRY)->set('visible')->eq($visible)->where('id')->eq($id)->exec();
                 if(dao::isError()) $this->send(array('result' => 'fail', 'message' => dao::getError()));
             }
 
