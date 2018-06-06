@@ -351,7 +351,7 @@ class action extends control
         $dating->status     = 'done';
         $dating->editedBy   = $user;
         $dating->editedDate = helper::now();
-        $this->dao->update(TABLE_DATING)->data($dating)->where('id')->eq($id)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+        $this->dao->update(TABLE_DATING)->data($dating)->where('id')->eq($id)->exec();
 
         $this->action->updateOriginTable($dating->objectType, $dating->objectID);
 
@@ -371,7 +371,7 @@ class action extends control
         if($dating->status != 'wait') $this->send(array('result' => 'fail', 'message' => $this->lang->action->record->deleteFail));
         if($this->app->user->admin != 'super' && $dating->createdBy != $this->app->user->account) $this->send(array('result' => 'fail', 'message' => $this->lang->admin->record->deleteDenied));
 
-        $this->dao->delete()->from(TABLE_DATING)->where('id')->eq($id)->andWhere('account_id')->eq($this->app->user->accountId)->exec();
+        $this->dao->delete()->from(TABLE_DATING)->where('id')->eq($id)->exec();
 
         $this->action->updateOriginTable($dating->objectType, $dating->objectID);
 
