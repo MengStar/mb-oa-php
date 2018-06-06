@@ -1,5 +1,6 @@
 <?php
 include 'router.class.php';
+
 class xuanxuan extends router
 {
     /**
@@ -9,7 +10,8 @@ class xuanxuan extends router
      * @access public
      */
     public $params = array();
-    public $accountId = -1;
+    public $userID = '';
+
     /**
      * 构造方法, 设置路径，类，超级变量等。注意：
      * 1.应该使用createApp()方法实例化router类；
@@ -21,8 +23,8 @@ class xuanxuan extends router
      * 1. You should use the createApp() method to get an instance of the router.
      * 2. If the $appRoot is empty, the framework will compute the appRoot according the $appName
      *
-     * @param string $appName   the name of the app
-     * @param string $appRoot   the root path of the app
+     * @param string $appName the name of the app
+     * @param string $appRoot the root path of the app
      * @access public
      * @return void
      */
@@ -34,9 +36,8 @@ class xuanxuan extends router
         $this->setClientLang('zh-cn');
     }
 
-    public function setAccountId($accountId)
-    {
-        $this->accountId=$accountId;
+    public function setUserID($userID){
+        $this->userID = $userID;
     }
     /**
      * Set view type.
@@ -83,11 +84,10 @@ class xuanxuan extends router
     public function initAES()
     {
         $key = $this->config->xuanxuan->key;
-        $iv  = substr($key, 0, 16);
+        $iv = substr($key, 0, 16);
         $this->aes = $this->loadClass('phpaes');
         $this->aes->init($key, $iv);
-        if($this->config->debug)
-        {
+        if ($this->config->debug) {
             $this->log("engine: " . $this->aes->getEngine());
         }
     }
@@ -95,7 +95,7 @@ class xuanxuan extends router
     /**
      * Set params.
      *
-     * @param  array  $params
+     * @param  array $params
      * @access public
      * @return void
      */
@@ -113,33 +113,34 @@ class xuanxuan extends router
      */
     public function parseRequest()
     {
-        $input   = file_get_contents("php://input");
-        $input   = $this->decrypt($input);
-        $version = !empty($input->v)      ? $input->v : '';
-        $userID  = !empty($input->userID) ? $input->userID : '';
-        $module  = !empty($input->module) ? $input->module : '';
-        $method  = !empty($input->method) ? $input->method : '';
-        $params  = !empty($input->params) ? $input->params : array();
+        $input = file_get_contents("php://input");
+        $input = $this->decrypt($input);
+        $version = !empty($input->v) ? $input->v : '';
+        $userID = !empty($input->userID) ? $input->userID : '';
+        $module = !empty($input->module) ? $input->module : '';
+        $method = !empty($input->method) ? $input->method : '';
+        $params = !empty($input->params) ? $input->params : array();
 
         $module = strtolower($module);
         $method = strtolower($method);
 
-        if(!isset($this->config->xuanxuan->enabledMethods[$module][$method]))
-        {
+        if($userID){
+            $this->setUserID($userID);
+        }
+
+        if (!isset($this->config->xuanxuan->enabledMethods[$module][$method])) {
             $data = new stdclass();
             $data->module = 'chat';
             $data->method = 'kickoff';
-            $data->data   = 'Illegal Requset.';
+            $data->data = 'Illegal Requset.';
             die($this->encrypt($data));
         }
 
-        if($module == 'chat' && $method == 'login' && is_array($params))
-        {
+        if ($module == 'chat' && $method == 'login' && is_array($params)) {
             /* params[0] is the server name. */
             unset($params[0]);
         }
-        if($userID && is_array($params))
-        {
+        if ($userID && is_array($params)) {
             $params[] = $userID;
         }
 
@@ -167,7 +168,7 @@ class xuanxuan extends router
      */
     public function loadModule()
     {
-        $appName    = $this->appName;
+        $appName = $this->appName;
         $moduleName = $this->moduleName;
         $methodName = $this->methodName;
 
@@ -184,8 +185,7 @@ class xuanxuan extends router
          * Set the class name of the control.
          **/
         $className = class_exists("my$moduleName") ? "my$moduleName" : $moduleName;
-        if(!class_exists($className))
-        {
+        if (!class_exists($className)) {
             $this->triggerError("the control $className not found", __FILE__, __LINE__);
             return false;
         }
@@ -195,8 +195,7 @@ class xuanxuan extends router
          * Create a instance of the control.
          **/
         $module = new $className();
-        if(!method_exists($module, $methodName))
-        {
+        if (!method_exists($module, $methodName)) {
             $this->triggerError("the module $moduleName has no $methodName method", __FILE__, __LINE__);
             return false;
         }
@@ -205,7 +204,7 @@ class xuanxuan extends router
 
         /* include default value for module*/
         $defaultValueFiles = glob($this->getTmpRoot() . "defaultvalue/*.php");
-        if($defaultValueFiles) foreach($defaultValueFiles as $file) include $file;
+        if ($defaultValueFiles) foreach ($defaultValueFiles as $file) include $file;
 
         /*
          * 使用反射机制获取函数参数的默认值。
@@ -214,21 +213,15 @@ class xuanxuan extends router
          * */
         $defaultParams = array();
         $methodReflect = new reflectionMethod($className, $methodName);
-        foreach($methodReflect->getParameters() as $param)
-        {
+        foreach ($methodReflect->getParameters() as $param) {
             $name = $param->getName();
 
             $default = '_NOT_SET';
-            if(isset($paramDefaultValue[$appName][$className][$methodName][$name]))
-            {
+            if (isset($paramDefaultValue[$appName][$className][$methodName][$name])) {
                 $default = $paramDefaultValue[$appName][$className][$methodName][$name];
-            }
-            elseif(isset($paramDefaultValue[$className][$methodName][$name]))
-            {
+            } elseif (isset($paramDefaultValue[$className][$methodName][$name])) {
                 $default = $paramDefaultValue[$className][$methodName][$name];
-            }
-            elseif($param->isDefaultValueAvailable())
-            {
+            } elseif ($param->isDefaultValueAvailable()) {
                 $default = $param->getDefaultValue();
             }
 
@@ -237,12 +230,9 @@ class xuanxuan extends router
 
         /* Merge params. */
         $params = array();
-        if(isset($this->params))
-        {
+        if (isset($this->params)) {
             $params = $this->mergeParams($defaultParams, (array)$this->params);
-        }
-        else
-        {
+        } else {
             $this->triggerError("param error: {$this->request->raw}", __FILE__, __LINE__);
             return false;
         }
@@ -256,8 +246,8 @@ class xuanxuan extends router
      * 合并请求的参数和默认参数，这样就可以省略已经有默认值的参数了。
      * Merge the params passed in and the default params. Thus the params which have default values needn't pass value, just like a function.
      *
-     * @param   array $defaultParams     the default params defined by the method.
-     * @param   array $passedParams      the params passed in through url.
+     * @param   array $defaultParams the default params defined by the method.
+     * @param   array $passedParams the params passed in through url.
      * @access  public
      * @return  array the merged params.
      */
@@ -268,24 +258,19 @@ class xuanxuan extends router
         unset($passedParams['HTTP_X_REQUESTED_WITH']);
 
         /* Check params from URL. */
-        foreach($passedParams as $param => $value)
-        {
-            if(preg_match('/[^a-zA-Z0-9_\.]/', $param)) die('Bad Request!');
+        foreach ($passedParams as $param => $value) {
+            if (preg_match('/[^a-zA-Z0-9_\.]/', $param)) die('Bad Request!');
         }
 
         $passedParams = array_values($passedParams);
         $i = 0;
-        foreach($defaultParams as $key => $defaultValue)
-        {
-            if(isset($passedParams[$i]))
-            {
+        foreach ($defaultParams as $key => $defaultValue) {
+            if (isset($passedParams[$i])) {
                 $defaultParams[$key] = $passedParams[$i];
+            } else {
+                if ($defaultValue === '_NOT_SET') $this->triggerError("The param '$key' should pass value. ", __FILE__, __LINE__, $exit = true);
             }
-            else
-            {
-                if($defaultValue === '_NOT_SET') $this->triggerError("The param '$key' should pass value. ", __FILE__, __LINE__, $exit = true);
-            }
-            $i ++;
+            $i++;
         }
 
         return $defaultParams;
@@ -301,8 +286,7 @@ class xuanxuan extends router
     public function decrypt($input = '')
     {
         $input = $this->aes->decrypt($input);
-        if($this->config->debug)
-        {
+        if ($this->config->debug) {
             $this->log("decrypt: " . $input);
         }
         $input = json_decode($input);
@@ -312,17 +296,16 @@ class xuanxuan extends router
     /**
      * Encrypt an output object.
      *
-     * @param  int    $output
+     * @param  int $output
      * @access public
      * @return string
      */
     public function encrypt($output = null)
     {
-        if(is_object($output)) $output->v = $this->config->xuanxuan->version;
+        if (is_object($output)) $output->v = $this->config->xuanxuan->version;
 
         $output = helper::jsonEncode($output);
-        if($this->config->debug)
-        {
+        if ($this->config->debug) {
             $this->log("encrypt: " . $output);
         }
         $output = $this->aes->encrypt($output);
@@ -341,12 +324,12 @@ class xuanxuan extends router
     public function log($message, $file = '', $line = '')
     {
         $log = "\n" . date('H:i:s') . " $message";
-        if($file) $log .= " in <strong>$file</strong>";
-        if($line) $log .= " on line <strong>$line</strong> ";
+        if ($file) $log .= " in <strong>$file</strong>";
+        if ($line) $log .= " on line <strong>$line</strong> ";
         $file = $this->getLogRoot() . 'xuanxuan.log.php';
-        if(!is_file($file)) file_put_contents($file, "<?php\n die();\n?>\n");
+        if (!is_file($file)) file_put_contents($file, "<?php\n die();\n?>\n");
 
         $fh = @fopen($file, 'a');
-        if($fh) fwrite($fh, $log) && fclose($fh);
+        if ($fh) fwrite($fh, $log) && fclose($fh);
     }
 }

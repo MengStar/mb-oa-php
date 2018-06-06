@@ -21,8 +21,6 @@ $startTime = getTime();
 $appName = 'sys';
 $app = xuanxuan::createApp($appName, '', 'xuanxuan');
 
-$app->setAccountId(0);
-
 $app->loadCommon();
 $app->parseRequest();
 $app->loadModule();

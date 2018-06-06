@@ -11,7 +11,7 @@ class chatModel extends model
      */
     public function resetUserStatus($status = 'offline')
     {
-        $this->dao->update(TABLE_USER)->set('status')->eq($status)->where('account_id')->eq($this->app->accountId)->exec();
+        $this->dao->update(TABLE_USER)->set('status')->eq($status)->exec();
         return !dao::isError();
     }
 
@@ -23,7 +23,9 @@ class chatModel extends model
      */
     public function createSystemChat()
     {
-        $chat = $this->dao->select('*')->from(TABLE_IM_CHAT)->where('type')->eq('system')->andWhere('account_id')->eq($this->app->accountId)->fetch();
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+        
+        $chat = $this->dao->select('*')->from(TABLE_IM_CHAT)->where('type')->eq('system')->andWhere('account_id')->eq($accountId)->fetch();
         if (!$chat) {
             $chat = new stdclass();
             $chat->gid = $this->createGID();
@@ -31,7 +33,7 @@ class chatModel extends model
             $chat->type = 'system';
             $chat->createdBy = 'system';
             $chat->createdDate = helper::now();
-            $chat->account_id = $this->app->accountId;
+            $chat->account_id = $accountId;
             $this->dao->insert(TABLE_IM_CHAT)->data($chat)->exec();
         }
         return !dao::isError();
@@ -49,7 +51,9 @@ class chatModel extends model
         $this->app->loadModuleConfig('attend');
         if (strpos(',all,xuanxuan,', ",{$this->config->attend->signInClient},") === false) return '';
 
-        $attend = $this->dao->select('*')->from(TABLE_ATTEND)->where('account')->eq($account)->andWhere('`date`')->eq(date('Y-m-d'))->andWhere('account_id')->eq($this->app->accountId)->fetch();
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
+        $attend = $this->dao->select('*')->from(TABLE_ATTEND)->where('account')->eq($account)->andWhere('`date`')->eq(date('Y-m-d'))->andWhere('account_id')->eq($accountId)->fetch();
         if ($attend) return strtotime("$attend->date $attend->signIn");
 
         return time();
@@ -109,9 +113,10 @@ class chatModel extends model
      */
     public function getUserList($status = '', $idList = array(), $idAsKey = true)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
         $dao = $this->dao->select('id, account, realname, avatar, role, dept, status, admin, gender, email, mobile, phone, site, qq, deleted')
             ->from(TABLE_USER)->where('1')
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->beginIF(!$idList)->andWhere('deleted')->eq('0')->fi()
             ->beginIF($status && $status == 'online')->andWhere('status')->ne('offline')->fi()
             ->beginIF($status && $status != 'online')->andWhere('status')->eq($status)->fi()
@@ -150,16 +155,18 @@ class chatModel extends model
      */
     public function getMemberListByGID($gid = '')
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $chat = $this->getByGID($gid);
         if (!$chat) return array();
 
         if ($chat->type == 'system') {
-            $memberList = $this->dao->select('id')->from(TABLE_USER)->where('deleted')->eq('0')->andWhere('account_id')->eq($this->app->accountId)->fetchPairs();
+            $memberList = $this->dao->select('id')->from(TABLE_USER)->where('deleted')->eq('0')->andWhere('account_id')->eq($accountId)->fetchPairs();
         } else {
             $memberList = $this->dao->select('user as id')
                 ->from(TABLE_IM_CHATUSER)
                 ->where('quit')->eq('0000-00-00 00:00:00')
-                ->andWhere('account_id')->eq($this->app->accountId)
+                ->andWhere('account_id')->eq($accountId)
                 ->beginIF($gid)->andWhere('cgid')->eq($gid)->fi()
                 ->fetchPairs();
         }
@@ -179,10 +186,12 @@ class chatModel extends model
      */
     public function getMessageList($idList = array(), $pager = null, $startDate = '')
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $messages = $this->dao->select('*')
             ->from(TABLE_IM_MESSAGE)
             ->where('1')
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->beginIF($idList)->andWhere('id')->in($idList)->fi()
             ->beginIF($startDate)->andWhere('date')->ge($startDate)->fi()
             ->orderBy('id_desc')
@@ -208,9 +217,11 @@ class chatModel extends model
      */
     public function getMessageListByCGID($cgid = '', $pager = null, $startDate = '')
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $messages = $this->dao->select('*')->from(TABLE_IM_MESSAGE)
             ->where('cgid')->eq($cgid)
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->beginIF($startDate)->andWhere('date')->ge($startDate)->fi()
             ->orderBy('id_desc')
             ->page($pager)
@@ -270,9 +281,11 @@ class chatModel extends model
      */
     public function getList($public = true)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $chats = $this->dao->select('*')->from(TABLE_IM_CHAT)
             ->where('public')->eq($public)
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->beginIF($public)->andWhere('dismissDate')->eq('0000-00-00 00:00:00')->fi()
             ->fetchAll();
 
@@ -290,11 +303,12 @@ class chatModel extends model
      * @return array
      */
     public function getListByUserID($userID = 0, $star = false)
-    {
+    {  $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $systemChat = $this->dao->select('*, 0 as star, 0 as hide, 0 as mute')
             ->from(TABLE_IM_CHAT)
             ->where('type')->eq('system')
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->fetchAll();
 
         $chats = $this->dao->select('t1.*, t2.star, t2.hide, t2.mute, t2.category')
@@ -302,8 +316,8 @@ class chatModel extends model
             ->leftjoin(TABLE_IM_CHATUSER)->alias('t2')->on('t1.gid=t2.cgid')
             ->where('t2.quit')->eq('0000-00-00 00:00:00')
             ->andWhere('t2.user')->eq($userID)
-            ->andWhere('t1.account_id')->eq($this->app->accountId)
-            ->andWhere('t2.account_id')->eq($this->app->accountId)
+            ->andWhere('t1.account_id')->eq($accountId)
+            ->andWhere('t2.account_id')->eq($accountId)
             ->beginIF($star)->andWhere('t2.star')->eq($star)->fi()
             ->fetchAll();
 
@@ -324,7 +338,9 @@ class chatModel extends model
      */
     public function getByGID($gid = '', $members = false)
     {
-        $chat = $this->dao->select('*')->from(TABLE_IM_CHAT)->where('gid')->eq($gid)->andWhere('account_id')->eq($this->app->accountId)->fetch();
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
+        $chat = $this->dao->select('*')->from(TABLE_IM_CHAT)->where('gid')->eq($gid)->andWhere('account_id')->eq($accountId)->fetch();
 
         if ($chat) {
             $this->formatChats($chat);
@@ -344,11 +360,13 @@ class chatModel extends model
      */
     public function getOfflineMessages($userID = 0)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $messages = $this->dao->select('t2.*')->from(TABLE_IM_MESSAGESTATUS)->alias('t1')
             ->leftJoin(TABLE_IM_MESSAGE)->alias('t2')->on('t2.gid = t1.gid')
             ->where('t1.user')->eq($userID)
-            ->andWhere('t1.account_id')->eq($this->app->accountId)
-            ->andWhere('t2.account_id')->eq($this->app->accountId)
+            ->andWhere('t1.account_id')->eq($accountId)
+            ->andWhere('t2.account_id')->eq($accountId)
             ->andWhere('t1.status')->eq('waiting')
             ->andWhere('t2.type')->ne('notify')
             ->orderBy('t2.order desc, t2.id desc')
@@ -358,7 +376,7 @@ class chatModel extends model
         $this->dao->update(TABLE_IM_MESSAGESTATUS)
             ->set('status')->eq('sent')
             ->where('user')->eq($userID)
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->andWhere('status')->eq('waiting')
             ->exec();
         return $messages;
@@ -379,6 +397,8 @@ class chatModel extends model
      */
     public function create($gid = '', $name = '', $type = '', $members = array(), $subjectID = 0, $public = false, $userID = 0)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $user = $this->getUserByUserID($userID);
 
         $chat = new stdclass();
@@ -388,7 +408,7 @@ class chatModel extends model
         $chat->subject = $subjectID;
         $chat->createdBy = !empty($user->account) ? $user->account : '';
         $chat->createdDate = helper::now();
-        $chat->account_id = $this->app->accountId;
+        $chat->account_id = $accountId;
 
         if ($public) $chat->public = 1;
 
@@ -412,11 +432,13 @@ class chatModel extends model
      */
     public function update($chat = null, $userID = 0)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         if ($chat) {
             $user = $this->getUserByUserID($userID);
             $chat->editedBy = !empty($user->account) ? $user->account : '';
             $chat->editedDate = helper::now();
-            $this->dao->update(TABLE_IM_CHAT)->data($chat)->where('gid')->eq($chat->gid)->andWhere('account_id')->eq($this->app->accountId)->batchCheck($this->config->chat->require->edit, 'notempty')->exec();
+            $this->dao->update(TABLE_IM_CHAT)->data($chat)->where('gid')->eq($chat->gid)->andWhere('account_id')->eq($accountId)->batchCheck($this->config->chat->require->edit, 'notempty')->exec();
         }
 
         /* Return the changed chat. */
@@ -434,6 +456,9 @@ class chatModel extends model
      */
     public function setAdmin($gid = '', $admins = array(), $isAdmin = true)
     {
+
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $chat = $this->getByGID($gid);
         $adminList = explode(',', $chat->admins);
         foreach ($admins as $admin) {
@@ -445,7 +470,7 @@ class chatModel extends model
             }
         }
         $adminList = implode(',', $adminList);
-        $this->dao->update(TABLE_IM_CHAT)->set('admins')->eq($adminList)->where('gid')->eq($gid)->andWhere('account_id')->eq($this->app->accountId)->exec();
+        $this->dao->update(TABLE_IM_CHAT)->set('admins')->eq($adminList)->where('gid')->eq($gid)->andWhere('account_id')->eq($accountId)->exec();
 
         return $this->getByGID($gid, true);
     }
@@ -481,11 +506,13 @@ class chatModel extends model
      */
     public function hideChat($gid = '', $hide = true, $userID = 0)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $this->dao->update(TABLE_IM_CHATUSER)
             ->set('hide')->eq($hide)
             ->where('cgid')->eq($gid)
             ->andWhere('user')->eq($userID)
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->exec();
 
         return !dao::isError();
@@ -522,9 +549,11 @@ class chatModel extends model
      */
     public function joinChat($gid = '', $userID = 0, $join = true)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         if ($join) {
             /* Join chat. */
-            $data = $this->dao->select('*')->from(TABLE_IM_CHATUSER)->where('cgid')->eq($gid)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($this->app->accountId)->fetch();
+            $data = $this->dao->select('*')->from(TABLE_IM_CHATUSER)->where('cgid')->eq($gid)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($accountId)->fetch();
             if ($data) {
                 /* If user hasn't quit the chat then return. */
                 if ($data->quit == '0000-00-00 00:00:00') return true;
@@ -533,7 +562,7 @@ class chatModel extends model
                 $data = new stdclass();
                 $data->join = helper::now();
                 $data->quit = '0000-00-00 00:00:00';
-                $this->dao->update(TABLE_IM_CHATUSER)->data($data)->where('cgid')->eq($gid)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($this->app->accountId)->exec();
+                $this->dao->update(TABLE_IM_CHATUSER)->data($data)->where('cgid')->eq($gid)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($accountId)->exec();
 
                 return !dao::isError();
             }
@@ -543,15 +572,15 @@ class chatModel extends model
             $data->cgid = $gid;
             $data->user = $userID;
             $data->join = helper::now();
-            $data->account_id = $this->app->accountId;
+            $data->account_id = $accountId;
             $this->dao->insert(TABLE_IM_CHATUSER)->data($data)->exec();
 
             $id = $this->dao->lastInsertID();
 
-            $this->dao->update(TABLE_IM_CHATUSER)->set('`order`')->eq($id)->where('id')->eq($id)->andWhere('account_id')->eq($this->app->accountId)->exec();
+            $this->dao->update(TABLE_IM_CHATUSER)->set('`order`')->eq($id)->where('id')->eq($id)->andWhere('account_id')->eq($accountId)->exec();
         } else {
             /* Quit chat. */
-            $this->dao->update(TABLE_IM_CHATUSER)->set('quit')->eq(helper::now())->where('cgid')->eq($gid)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($this->app->accountId)->exec();
+            $this->dao->update(TABLE_IM_CHATUSER)->set('quit')->eq(helper::now())->where('cgid')->eq($gid)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($accountId)->exec();
         }
         return !dao::isError();
     }
@@ -566,20 +595,21 @@ class chatModel extends model
      */
     public function createMessage($messageList = array(), $userID = 0)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
         $idList = array();
         $chatList = array();
         foreach ($messageList as $message) {
-            $msg = $this->dao->select('*')->from(TABLE_IM_MESSAGE)->where('gid')->eq($message->gid)->andWhere('account_id')->eq($this->app->accountId)->fetch();
+            $msg = $this->dao->select('*')->from(TABLE_IM_MESSAGE)->where('gid')->eq($message->gid)->andWhere('account_id')->eq($accountId)->fetch();
             if ($msg) {
                 if ($msg->contentType == 'image' || $msg->contentType == 'file') {
-                    $this->dao->update(TABLE_IM_MESSAGE)->set('content')->eq($message->content)->where('id')->eq($msg->id)->andWhere('account_id')->eq($this->app->accountId)->exec();
+                    $this->dao->update(TABLE_IM_MESSAGE)->set('content')->eq($message->content)->where('id')->eq($msg->id)->andWhere('account_id')->eq($accountId)->exec();
                 }
                 $idList[] = $msg->id;
             } elseif (!$msg) {
                 if (!(isset($message->user) && $message->user)) $message->user = $userID;
                 if (!(isset($message->date) && $message->date)) $message->date = helper::now();
 
-                $message->account_id = $this->app->accountId;
+                $message->account_id = $accountId;
                 $this->dao->insert(TABLE_IM_MESSAGE)->data($message)->exec();
                 $idList[] = $this->dao->lastInsertID();
 
@@ -587,14 +617,14 @@ class chatModel extends model
                 $data->user = $message->user;
                 $data->gid = $message->gid;
                 $data->status = 'sent';
-                $data->account_id = $this->app->accountId;
+                $data->account_id = $accountId;
                 $this->dao->insert(TABLE_IM_MESSAGESTATUS)->data($data)->exec();
             }
             $chatList[$message->cgid] = $message->cgid;
         }
         if (empty($idList)) return array();
 
-        $this->dao->update(TABLE_IM_CHAT)->set('lastActiveTime')->eq(helper::now())->where('gid')->in($chatList)->andWhere('account_id')->eq($this->app->accountId)->exec();
+        $this->dao->update(TABLE_IM_CHAT)->set('lastActiveTime')->eq(helper::now())->where('gid')->in($chatList)->andWhere('account_id')->eq($accountId)->exec();
 
         return $this->getMessageList($idList);
     }
@@ -609,13 +639,14 @@ class chatModel extends model
      */
     public function saveOfflineMessages($messages = array(), $users = array())
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
         foreach ($users as $user) {
             foreach ($messages as $message) {
                 $data = new stdClass();
                 $data->user = $user;
                 $data->gid = $message->gid;
                 $data->status = 'waiting';
-                $data->account_id = $this->app->accountId;
+                $data->account_id = $accountId;
                 $this->dao->replace(TABLE_IM_MESSAGESTATUS)->data($data)->exec();
             }
         }
@@ -629,11 +660,12 @@ class chatModel extends model
      */
     public function getOfflineNotify($userID)
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
         $messages = $this->dao->select('t2.*')->from(TABLE_IM_MESSAGESTATUS)->alias('t1')
             ->leftjoin(TABLE_IM_MESSAGE)->alias('t2')->on("t2.gid = t1.gid")
             ->where('t1.user')->eq($userID)
-            ->andWhere('t1.account_id')->eq($this->app->accountId)
-            ->andWhere('t2.account_id')->eq($this->app->accountId)
+            ->andWhere('t1.account_id')->eq($accountId)
+            ->andWhere('t2.account_id')->eq($accountId)
             ->andWhere('t1.status')->eq('waiting')
             ->andWhere('t2.type')->eq('notify')
             ->fetchAll();
@@ -643,7 +675,7 @@ class chatModel extends model
         $gids = array();
         foreach ($notify as $message) $gids[] = $message->gid;
 
-        $this->dao->update(TABLE_IM_MESSAGESTATUS)->set('status')->eq('sent')->where('gid')->in($gids)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($this->app->accountId)->exec();
+        $this->dao->update(TABLE_IM_MESSAGESTATUS)->set('status')->eq('sent')->where('gid')->in($gids)->andWhere('user')->eq($userID)->andWhere('account_id')->eq($accountId)->exec();
         return $notify;
     }
 
@@ -654,6 +686,8 @@ class chatModel extends model
      */
     public function getNotify()
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         $onlineUsers = $this->getUserList('online');
         if (empty($onlineUsers)) return array();
         $onlineUsers = array_keys($onlineUsers);
@@ -663,8 +697,8 @@ class chatModel extends model
             ->where('t1.status')->eq('waiting')
             ->andWhere('t2.type')->eq('notify')
             ->andWhere('t1.user')->in($onlineUsers)
-            ->andWhere('t1.account_id')->eq($this->app->accountId)
-            ->andWhere('t2.account_id')->eq($this->app->accountId)
+            ->andWhere('t1.account_id')->eq($accountId)
+            ->andWhere('t2.account_id')->eq($accountId)
             ->groupBy('t1.gid')
             ->fetchAll();
         if (empty($messages)) return array();
@@ -686,7 +720,7 @@ class chatModel extends model
                 ->set('status')->eq('sent')
                 ->where('gid')->in($gid)
                 ->andWhere('user')->eq($userID)
-                ->andWhere('account_id')->eq($this->app->accountId)
+                ->andWhere('account_id')->eq($accountId)
                 ->exec();
         }
         return $data;
@@ -730,7 +764,10 @@ class chatModel extends model
     public function offlineUser($offline = array())
     {
         if (empty($offline)) return true;
-        $this->dao->update(TABLE_USER)->set('status')->eq('offline')->where('id')->in($offline)->andWhere('account_id')->eq($this->app->accountId)->exec();
+
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
+        $this->dao->update(TABLE_USER)->set('status')->eq('offline')->where('id')->in($offline)->andWhere('account_id')->eq($accountId)->exec();
         return !dao::isError();
     }
 
@@ -742,9 +779,11 @@ class chatModel extends model
      */
     public function sendFailMessage($sendfail = array())
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+
         foreach ($sendfail as $userID => $gid) {
             if (empty($gid)) continue;
-            $idList = $this->dao->select('id')->from(TABLE_IM_MESSAGE)->where('gid')->in($gid)->andWhere('account_id')->eq($this->app->accountId)->fetchPairs();
+            $idList = $this->dao->select('id')->from(TABLE_IM_MESSAGE)->where('gid')->in($gid)->andWhere('account_id')->eq($accountId)->fetchPairs();
             $messages = $this->getMessageList($idList);
             $this->saveOfflineMessages($messages, $userID);
         }
@@ -781,8 +820,9 @@ EOT;
             case '1.3.0':
                 $this->loadModel('upgrade')->execSQL($this->getUpgradeFile($version));
             case '1.4.0':
+               $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
                 $this->loadModel('upgrade')->execSQL($this->getUpgradeFile($version));
-                $messagesList = $this->dao->select('*')->from(TABLE_IM_USERMESSAGE)->where('account_id')->eq($this->app->accountId)->fetchAll();
+                $messagesList = $this->dao->select('*')->from(TABLE_IM_USERMESSAGE)->where('account_id')->eq($accountId)->fetchAll();
                 if (!empty($messagesList)) foreach ($messagesList as $messages) {
                     $messages = json_decode($messages->message);
                     foreach ($messages as $message) {
@@ -790,7 +830,7 @@ EOT;
                         $data->user = $messages->uesr;
                         $data->gid = $message->gid;
                         $data->status = 'waiting';
-                        $data->account_id = $this->app->accountId;
+                        $data->account_id = $accountId;
                         $this->dao->insert(TABLE_IM_MESSAGESTATUS)->data($data)->exec();
                     }
                 }
@@ -866,7 +906,7 @@ EOT;
     public function createNotify($target = '', $title = '', $subtitle = '', $content = '', $contentType = 'text', $url = '', $actions = array(), $sender = 0)
     {
         $users = $this->getUserList('', $target);
-
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
         $info = array();
         $info['title'] = $title;
         $info['subtitle'] = $subtitle;
@@ -885,7 +925,7 @@ EOT;
         $notify->content = $content;
         $notify->contentType = $contentType;
         $notify->data = json_encode($info);
-        $notify->account_id = $this->app->accountId;
+        $notify->account_id = $accountId;
         $this->dao->insert(TABLE_IM_MESSAGE)->data($notify)->exec();
 
         foreach ($info['target'] as $user) {
@@ -893,7 +933,7 @@ EOT;
             $data->user = $user;
             $data->gid = $notify->gid;
             $data->status = 'waiting';
-            $data->account_id = $this->app->accountId;
+            $data->account_id = $accountId;
             $this->dao->insert(TABLE_IM_MESSAGESTATUS)->data($data)->exec();
         }
         return !dao::isError();
@@ -912,11 +952,12 @@ EOT;
 
     public function checkUserChange()
     {
+       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
         $data = $this->dao->select('id')->from(TABLE_ACTION)
             ->where('objectType')->eq('user')
             ->andWhere('action')->in('created,edited,deleted')
             ->andWhere('date')->gt(date(DT_DATETIME1, strtotime('-1 Minute')))
-            ->andWhere('account_id')->eq($this->app->accountId)
+            ->andWhere('account_id')->eq($accountId)
             ->fetch();
         return empty($data) ? 'no' : 'yes';
     }
