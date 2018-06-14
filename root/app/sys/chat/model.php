@@ -24,7 +24,7 @@ class chatModel extends model
     public function createSystemChat()
     {
        $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
-        
+
         $chat = $this->dao->select('*')->from(TABLE_IM_CHAT)->where('type')->eq('system')->andWhere('account_id')->eq($accountId)->fetch();
         if (!$chat) {
             $chat = new stdclass();
@@ -684,10 +684,22 @@ class chatModel extends model
      * @access public
      * @return array
      */
-    public function getNotify()
-    {
-       $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+    public function getNotify(){
+        $objs =  $this->dao->select('distinct account_id')->from(TABLE_USER)->fetchAll();
+        $data = array();
+        foreach ($objs as $obj){
+            $data[$obj->account_id] = $this->getUserList($obj->account_id);
+        }
 
+        return $data;
+    }
+    /**
+     * Get notify.
+     * @access public
+     * @return array
+     */
+    public function getNotifyByAcccountId($accountId)
+    {
         $onlineUsers = $this->getUserList('online');
         if (empty($onlineUsers)) return array();
         $onlineUsers = array_keys($onlineUsers);

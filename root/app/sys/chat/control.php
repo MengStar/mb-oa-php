@@ -65,7 +65,8 @@ class chat extends control
             $this->output->result = 'fail';
             $this->output->data   = $this->lang->user->loginFailed;
         }
-
+        $accountId = $user->account_id;
+        $this->output->accountId = $accountId;
         die($this->app->encrypt($this->output));
     }
 
@@ -94,6 +95,9 @@ class chat extends control
         session_destroy();
         setcookie('za', false);
         setcookie('zp', false);
+
+        $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($userID)->fetch()->account_id;
+        $this->output->accountId = $accountId;
 
         die($this->app->encrypt($this->output));
     }
@@ -1082,6 +1086,10 @@ class chat extends control
             $this->output->result = 'success';
             $this->output->data   = $this->chat->getNotify();
         }
+
+//        $accountId = $this->dao->select('account_id')->from(TABLE_USER)->where('id')->eq($this->app->userID)->fetch()->account_id;
+//        $this->output->accountId = $accountId;
+
         die($this->app->encrypt($this->output));
     }
 

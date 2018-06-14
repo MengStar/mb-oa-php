@@ -10,6 +10,7 @@ class xuanxuan extends router
      * @access public
      */
     public $params = array();
+    public $accountId = -1;
     public $userID = '';
 
     /**
@@ -103,6 +104,17 @@ class xuanxuan extends router
     {
         $this->params = $params;
     }
+    /**
+     * Set params.
+     *
+     * @param  array $params
+     * @access public
+     * @return void
+     */
+    public function setAccountId($accountId)
+    {
+        $this->accountId = $accountId;
+    }
 
     /**
      * 解析本次请求的入口方法，根据请求的类型(PATH_INFO GET)，调用相应的方法。
@@ -117,6 +129,7 @@ class xuanxuan extends router
         $input = $this->decrypt($input);
         $version = !empty($input->v) ? $input->v : '';
         $userID = !empty($input->userID) ? $input->userID : '';
+        $accountId = !empty($input->accountId) ? $input->accountId : '';
         $module = !empty($input->module) ? $input->module : '';
         $method = !empty($input->method) ? $input->method : '';
         $params = !empty($input->params) ? $input->params : array();
@@ -147,6 +160,7 @@ class xuanxuan extends router
         $this->setModuleName($module);
         $this->setMethodName($method);
         $this->setParams($params);
+        $this->setAccountId($accountId);
         $this->setControlFile();
     }
 
@@ -238,7 +252,7 @@ class xuanxuan extends router
         }
 
         /* Call the method. */
-        $this->response = call_user_func_array(array($module, $methodName), $params);
+        $this->response = call_user_func_array(array($module, $methodName), $params,$this->accountId);
         return true;
     }
 
