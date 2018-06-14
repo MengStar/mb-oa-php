@@ -129,7 +129,7 @@ class xuanxuan extends router
         $input = $this->decrypt($input);
         $version = !empty($input->v) ? $input->v : '';
         $userID = !empty($input->userID) ? $input->userID : '';
-        $accountId = !empty($input->accountId) ? $input->accountId : '';
+        $accountId = isset($input->accountId) ? $input->accountId : '';
         $module = !empty($input->module) ? $input->module : '';
         $method = !empty($input->method) ? $input->method : '';
         $params = !empty($input->params) ? $input->params : array();
@@ -252,7 +252,7 @@ class xuanxuan extends router
         }
 
         /* Call the method. */
-        $this->response = call_user_func_array(array($module, $methodName), $params,$this->accountId);
+        $this->response = call_user_func_array(array($module, $methodName), $params);
         return true;
     }
 
