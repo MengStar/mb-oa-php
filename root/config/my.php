@@ -2,7 +2,7 @@
 $config->installed    = true;
 $config->debug        = true;
 $config->requestType  = 'PATH_INFO';
-$config->db->host = '13.78.36.172';
+$config->db->host = 'azure.com';
 $config->db->port     = '3306';
 $config->db->name     = 'xxb';
 $config->db->user     = 'root';
